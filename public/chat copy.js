@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const messCounter = document.getElementById('messCounter');
     const groupCounter = document.getElementById('groupCounter');
     const unreadMessages = document.createElement('div');
-    const receiverElement = document.getElementById('receiverName');
     let messageValue = 0;
     let receiver = '';
    
@@ -245,7 +244,7 @@ socket.on('inviteProcessed', () => {
 });
 socket.on('foundUsers', async (founded) => {
     console.log('Found users:', founded);
-    
+    const receiverElement = document.getElementById('receiverName');
     // Clear previous user list
     usersDiv.innerHTML = ''; // Clear the previous list
 
@@ -494,7 +493,7 @@ const messagesContent = document.getElementById("messagesContent");
 messagesContent.addEventListener('click', (event) => {
     // Check if the clicked element is an unread message
     const unreadMessage = event.target.closest('.unreadMessages');
-    
+
     if (unreadMessage) {
         // Log the data-username attribute
         // const username = unreadMessage.getAttribute('data-username');
@@ -650,7 +649,7 @@ function adjustMarginForScrollbar() {
 socket.on('messagesResponse', (decryptedMessages) => {
     console.log(decryptedMessages);
     //const chat = document.getElementById("chat");
-    
+    receiver = decryptedMessages.messages[0].senderUsername;
 
             // Emit findUsers without awaiting the response
             
@@ -659,33 +658,32 @@ socket.on('messagesResponse', (decryptedMessages) => {
             
                 
                 
-                    
                     receiverElement.textContent = receiver;
+
                     // Clear existing content in #receiverAvatar
                     receiverAvatar.innerHTML = ''; 
                     
-                    if (decryptedMessages.profileImage) {
+
                     // Check for the presence of an img element
-                        const img = document.createElement('img');
-                        img.id = 'receiverAvatar';
-                        img.src = decryptedMessages.profileImage;
-                        receiverAvatar.appendChild(img);
+                    const img = document.createElement('img');
+                    img.src = decryptedMessages.profileImage;
                     
-                    }
-                    else {
-                        const initials = document.createElement('div');
-                        initials.id = 'receiverInitials';
-                        initials.textContent = receiver.charAt(0).toUpperCase();
-                        receiverAvatar.appendChild(initials);
-                    }
+
                     // Create initials element but keep it hidden initially
-                    
-                    
+                    const initials = document.createElement('div');
+                    initials.classList.add('initials');
+                    initials.textContent = decryptedMessages.messages[0].senderUsername.charAt(0).toUpperCase();
                     // Keep hidden initially
                     
 
                     // Append the image or initials based on availability
-                    
+                    if (img.src != null) {
+                        
+                        receiverAvatar.appendChild(clonedImg);
+                    } else {
+                        
+                        receiverAvatar.appendChild(initials);
+                    }
 
                     
                 

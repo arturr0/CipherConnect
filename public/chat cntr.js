@@ -8,11 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const invCounter = document.getElementById('invCounter');
     const messCounter = document.getElementById('messCounter');
     const groupCounter = document.getElementById('groupCounter');
-    const unreadMessages = document.createElement('div');
-    const receiverElement = document.getElementById('receiverName');
     let messageValue = 0;
     let receiver = '';
-   
     const cryptoDiv = document.getElementById("crypto");
     const originalWidth = cryptoDiv.offsetWidth;
     document.getElementById("crypto").addEventListener('click', () => {
@@ -245,7 +242,7 @@ socket.on('inviteProcessed', () => {
 });
 socket.on('foundUsers', async (founded) => {
     console.log('Found users:', founded);
-    
+    const receiverElement = document.getElementById('receiverName');
     // Clear previous user list
     usersDiv.innerHTML = ''; // Clear the previous list
 
@@ -356,7 +353,23 @@ socket.on('foundUsers', async (founded) => {
             });
         });
         
-        
+        socket.on('messagesResponse', (decryptedMessages) => {
+            console.log(decryptedMessages);
+            //const chat = document.getElementById("chat");
+            chat.innerHTML = '';
+            decryptedMessages.forEach(message => {
+                if (message.senderUsername == username) {
+                    chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${message.message}</div>`);
+                    adjustMarginForScrollbar();
+                    jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
+                }
+                else {
+                    chat.innerHTML += (`<div class="bubble right" style="word-break: break-word">${message.message}</div>`);
+                    jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
+                }
+
+            });
+        })
             // Select all elements with the class 'send'
 const sendButtons = document.querySelectorAll('.send');
 
@@ -401,7 +414,7 @@ const sendButtons = document.querySelectorAll('.send');
     });
 
     usersDiv.appendChild(fragment);
-    
+
     // Hide loading icon after appending users
     // loadingIcon.classList.add('display');
     // loadingIcon.classList.remove('animate-spin');
@@ -455,61 +468,20 @@ function handleIncomingMessage(message) {
     jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
 }
 
-// Main function for handling new messages
 function handleOtherMessage(user) {
-    // Use a selector to check if there's a div with data-username matching the user
-    let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-
-    // Check if the user's unread message div already exists
-    if (!existingMessage) {
-        // Create a new unread message div for the specific user
-        const unreadMessage = document.createElement('div');
-        unreadMessage.classList.add('unreadMessages');
-        unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-        unreadMessage.setAttribute('data-username', user); // Set data-username for this user
-        unreadMessage.textContent = `${user} 1`; // Display initial unread count
-
-        // Append to the messages content
-        document.getElementById("messagesContent").appendChild(unreadMessage);
-    } else {
-        // If the element exists, update its value
-        let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-        currentValue++; // Increment the value
-
-        // Set the new value and update displayed text
-        existingMessage.setAttribute('value', currentValue);
-        existingMessage.textContent = `${user} ${currentValue}`;
+    if (document.querySelector(`${user}`)) {
+        console.log("exits");
     }
+    else console.log("not exits");
 
-    // Update the overall message counter
-    let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
+    let messageValue = parseInt(messCounter.getAttribute('value'), 10); // Default to 0 if NaN
+    console.log(messCounter);
     messageValue++;
-    console.log(messageValue);
+
+    // Update the `value` attribute and text content of the div
     messCounter.setAttribute('value', messageValue);
     messCounter.textContent = messageValue;
 }
-
-// Attach the global click event listener to the parent container
-const messagesContent = document.getElementById("messagesContent");
-messagesContent.addEventListener('click', (event) => {
-    // Check if the clicked element is an unread message
-    const unreadMessage = event.target.closest('.unreadMessages');
-    
-    if (unreadMessage) {
-        // Log the data-username attribute
-        // const username = unreadMessage.getAttribute('data-username');
-        console.log('Clicked username:', unreadMessage.getAttribute('data-username'));
-
-        // Emit the message request (assuming socket is defined)
-        receiver = unreadMessage.getAttribute('data-username'); // Use the user directly
-
-        socket.emit('sendMeMessages', username, receiver);
-    }
-});
-
-
-
-
 
     socket.on('send invitation', (data) => {
         console.log('Invitation data received:', data);
@@ -631,7 +603,7 @@ socket.on('userTyping', ({ isTyping, sender }) => {
 
 function adjustMarginForScrollbar() {
     //const chat = document.getElementById('chat');
-    const messages = document.querySelectorAll('.left');
+    const messages = document.querySelectorAll('.right');
 
     // Check if the scrollbar is visible
     const hasScrollbar = chat.scrollHeight > chat.clientHeight;
@@ -647,61 +619,5 @@ function adjustMarginForScrollbar() {
 
 
 
-socket.on('messagesResponse', (decryptedMessages) => {
-    console.log(decryptedMessages);
-    //const chat = document.getElementById("chat");
-    
 
-            // Emit findUsers without awaiting the response
-            
-
-            // Assume that the server will respond with found users
-            
-                
-                
-                    
-                    receiverElement.textContent = receiver;
-                    // Clear existing content in #receiverAvatar
-                    receiverAvatar.innerHTML = ''; 
-                    
-                    if (decryptedMessages.profileImage) {
-                    // Check for the presence of an img element
-                        const img = document.createElement('img');
-                        img.id = 'receiverAvatar';
-                        img.src = decryptedMessages.profileImage;
-                        receiverAvatar.appendChild(img);
-                    
-                    }
-                    else {
-                        const initials = document.createElement('div');
-                        initials.id = 'receiverInitials';
-                        initials.textContent = receiver.charAt(0).toUpperCase();
-                        receiverAvatar.appendChild(initials);
-                    }
-                    // Create initials element but keep it hidden initially
-                    
-                    
-                    // Keep hidden initially
-                    
-
-                    // Append the image or initials based on availability
-                    
-
-                    
-                
-        
-    chat.innerHTML = '';
-    decryptedMessages.messages.forEach(message => {
-        if (message.senderUsername == username) {
-            chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${message.message}</div>`);
-            adjustMarginForScrollbar();
-            jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-        }
-        else {
-            chat.innerHTML += (`<div class="bubble right" style="word-break: break-word">${message.message}</div>`);
-            jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-        }
-
-    });
-})
 });
