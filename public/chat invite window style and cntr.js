@@ -492,41 +492,9 @@ function handleOtherMessage(user) {
 // Attach the global click event listener to the parent container
 const messagesContent = document.getElementById("messagesContent");
 messagesContent.addEventListener('click', (event) => {
-    const unreadMessage = event.target.closest('.unreadMessages');
     // Check if the clicked element is an unread message
-    document.querySelector('.dropdown-content').classList.add('hide');
-    document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
-        // Check which property has finished transitioning
-        document.querySelector('.dropdown-content').classList.remove('hide');
-        unreadMessage.remove();
-    });
+    const unreadMessage = event.target.closest('.unreadMessages');
     
-    //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-    
-    // Check if the user's unread message div already exists
-    
-        // Create a new unread message div for the specific user
-        
-        
-
-        // Append to the messages content
-        //document.getElementById("messagesContent").appendChild(unreadMessage);
-    
-        // If the element exists, update its value
-        const currentValue = parseInt(unreadMessage.getAttribute('value'), 10); // Default to 0 if NaN
-        const updatedCounter = parseInt(messCounter.getAttribute('value'), 10) - currentValue; // Increment the value
-
-        // Set the new value and update displayed text
-        // existingMessage.setAttribute('value', currentValue);
-        // existingMessage.textContent = `${user} ${currentValue}`;
-    
-
-    // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    messCounter.setAttribute('value', updatedCounter);
-    messCounter.textContent = updatedCounter;
     if (unreadMessage) {
         // Log the data-username attribute
         // const username = unreadMessage.getAttribute('data-username');
@@ -853,14 +821,4 @@ function closeModal() {
 //         console.log("User canceled the action.");
 //     }
 // };
-document.querySelector('.dropdownToggle').addEventListener('click', function() {
-    const dropdownContent = this.nextElementSibling; // Get the next sibling (.dropdown-content)
-    
-    if (dropdownContent.classList.contains('hide')) {
-        dropdownContent.classList.remove('hide'); // Show the content
-    } else {
-        dropdownContent.classList.add('hide'); // Hide the content
-    }
-});
-
 });
