@@ -1,4 +1,4 @@
-const socket = io.connect('http://localhost:3004');
+const socket = io.connect('http://localhost:3000');
 const baseUrl = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
@@ -96,49 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Username emitted to server:', username);
     });
     
-    socket.on('unread message counts', (unreadCounts) => {
-        let newMessageCntr = 0;
-        unreadCounts.forEach(newMessage => {
-            const unreadMessage = document.createElement('div');
-            unreadMessage.classList.add('unreadMessages');
-            unreadMessage.setAttribute('value', `${newMessage.unreadCount}`);
-            unreadMessage.setAttribute('data-username', newMessage.username); // Set data-username for this user
-            unreadMessage.textContent = `${newMessage.username} ${newMessage.unreadCount}`;
-            document.getElementById("messagesContent").appendChild(unreadMessage);
-            newMessageCntr += newMessage.unreadCount// Set initial value to 1    
-        });
-        messCounter.setAttribute('value', newMessageCntr);
-        messCounter.textContent = newMessageCntr;
-    //     let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-
-    // // Check if the user's unread message div already exists
-    // if (!existingMessage) {
-    //     // Create a new unread message div for the specific user
-    //     const unreadMessage = document.createElement('div');
-    //     unreadMessage.classList.add('unreadMessages');
-    //     unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-    //     unreadMessage.setAttribute('data-username', user); // Set data-username for this user
-    //     unreadMessage.textContent = `${user} 1`; // Display initial unread count
-
-    //     // Append to the messages content
-    //     document.getElementById("messagesContent").appendChild(unreadMessage);
-    // } else {
-    //     // If the element exists, update its value
-    //     let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    //     currentValue++; // Increment the value
-
-    //     // Set the new value and update displayed text
-    //     existingMessage.setAttribute('value', currentValue);
-    //     existingMessage.textContent = `${user} ${currentValue}`;
-    // }
-
-    // // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    // messCounter.setAttribute('value', messageValue);
-    // messCounter.textContent = messageValue;
-    });
     socket.on('blockedNotification', (data) => {
         console.log(data);
         socket.emit('findUsers', searchUser);
@@ -535,41 +492,9 @@ function handleOtherMessage(user) {
 // Attach the global click event listener to the parent container
 const messagesContent = document.getElementById("messagesContent");
 messagesContent.addEventListener('click', (event) => {
-    const unreadMessage = event.target.closest('.unreadMessages');
     // Check if the clicked element is an unread message
-    document.querySelector('.dropdown-content').classList.add('hide');
-    document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
-        // Check which property has finished transitioning
-        document.querySelector('.dropdown-content').classList.remove('hide');
-        unreadMessage.remove();
-    });
+    const unreadMessage = event.target.closest('.unreadMessages');
     
-    //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-    
-    // Check if the user's unread message div already exists
-    
-        // Create a new unread message div for the specific user
-        
-        
-
-        // Append to the messages content
-        //document.getElementById("messagesContent").appendChild(unreadMessage);
-    
-        // If the element exists, update its value
-        const currentValue = parseInt(unreadMessage.getAttribute('value'), 10); // Default to 0 if NaN
-        const updatedCounter = parseInt(messCounter.getAttribute('value'), 10) - currentValue; // Increment the value
-
-        // Set the new value and update displayed text
-        // existingMessage.setAttribute('value', currentValue);
-        // existingMessage.textContent = `${user} ${currentValue}`;
-    
-
-    // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    messCounter.setAttribute('value', updatedCounter);
-    messCounter.textContent = updatedCounter;
     if (unreadMessage) {
         // Log the data-username attribute
         // const username = unreadMessage.getAttribute('data-username');
@@ -896,14 +821,4 @@ function closeModal() {
 //         console.log("User canceled the action.");
 //     }
 // };
-document.querySelector('.dropdownToggle').addEventListener('click', function() {
-    const dropdownContent = this.nextElementSibling; // Get the next sibling (.dropdown-content)
-    
-    if (dropdownContent.classList.contains('hide')) {
-        dropdownContent.classList.remove('hide'); // Show the content
-    } else {
-        dropdownContent.classList.add('hide'); // Hide the content
-    }
-});
-
 });
