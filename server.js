@@ -11,25 +11,44 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
+const livereload = require('livereload');
+const connectLiveReload = require('connect-livereload');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const uploadsDir = path.join(__dirname, 'uploads'); // Adjust the path according to your project structure
 
-app.use('/uploads', express.static(uploadsDir)); // Serve images from the uploads directory
-//app.use('/uploads', express.static('uploads'));
+// LiveReload setup
+const liveReloadServer = livereload.createServer();
+liveReloadServer.watch([
+    path.join(__dirname, 'public'),
+    path.join(__dirname, 'views')
+]);
+const bs = require('browser-sync').create();
 
-// Create uploads directory if it doesn't exist
+// Initialize BrowserSync if not in production
+if (process.env.NODE_ENV !== 'production') {
+  bs.init({
+    proxy: 'http://localhost:3000',
+    files: ['public/**/*.{css,js}', 'views/**/*.pug'],
+    reloadDelay: 1000,
+  });
+
+  app.use(require('connect-browser-sync')(bs)); // Ensure BrowserSync works with Express
+}
+
+// Add connect-livereload middleware
+app.use(connectLiveReload());
+
+app.use('/uploads', express.static(uploadsDir)); // Serve images from the uploads directory
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
 }
-
-// Serve static files from the uploads directory
-//app.use('/uploads', express.static(uploadsDir));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-const db = new sqlite3.Database('chat.db');
 app.use(express.static(path.join(__dirname, 'public')));
+
+const db = new sqlite3.Database('chat.db');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -37,12 +56,7 @@ app.use(cookieParser());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
-
 // Initialize multer with the defined storage
-
-
-// Handle file upload route
-
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadsDir); // Set the destination to 'uploads' directory
@@ -59,24 +73,21 @@ app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
-    // Send the uploaded file path
     res.json({ filePath: `/uploads/${req.file.filename}` });
 });
 
 // Encryption/Decryption functions
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // Use Buffer to create key from hex
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 const IV_LENGTH = 16; // For AES, this is always 16
 
-// Function to encrypt a message
 function encrypt(text) {
     let iv = crypto.randomBytes(IV_LENGTH);
     let cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex'); // Store IV with the encrypted message
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
 }
 
-// Function to decrypt a message
 function decrypt(text) {
     let textParts = text.split(':');
     let iv = Buffer.from(textParts.shift(), 'hex');
@@ -87,18 +98,19 @@ function decrypt(text) {
     return decrypted.toString();
 }
 
+// Start your server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
 
-// db.close((err) => {
-//     if (err) {
-//         console.error('Error closing the database connection:', err.message);
-//     } else {
-//         console.log('Database connection closed.');
-//         // Now delete the file
-        
-//     }
-// });
+// Reload browser when files change
+liveReloadServer.server.once("connection", () => {
+    setTimeout(() => {
+        liveReloadServer.refresh("/");
+    }, 100);
+});
 
-// Initialize the SQLite database
  db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,7 +227,7 @@ io.on('connection', (socket) => {
             }
     
             // Find receiver's ID by username
-            db.get('SELECT id, socketId FROM users WHERE username = ?', [receiver], (err, rec) => {
+            db.get('SELECT id, socketId, receiver FROM users WHERE username = ?', [receiver], (err, rec) => {
                 if (err || !rec) {
                     console.error('Receiver not found:', receiver);
                     return;
@@ -259,12 +271,26 @@ io.on('connection', (socket) => {
     
                                 // Send encrypted message to receiver
                                 io.to(rec.socketId).emit('message', { user: username, message: messageSent }); // Send original message
+    
+                                // Check if the receiver's `receiver` in the users table matches the sender's ID
+                                if (rec.receiver === sender.id) {
+                                    // Update the message 'read' status
+                                    db.run('UPDATE messages SET read = 1 WHERE recId = ? AND senderId = ?', 
+                                        [rec.id, sender.id], (err) => {
+                                            if (err) {
+                                                console.error('Error updating message read status:', err);
+                                            } else {
+                                                console.log(`Messages marked as read for receiver: ${receiver}`);
+                                            }
+                                        });
+                                }
                             });
                     }
                 );
             });
         });
     });
+    
     
 
 // Handle requests for previous messages
@@ -276,59 +302,87 @@ socket.on('sendMeMessages', (username, receiver) => {
             return;
         }
 
-        // Retrieve ID of the receiver (receiver)
-        db.get('SELECT id FROM users WHERE username = ?', [receiver], (err, receiver) => {
-            if (err || !receiver) {
+        // Retrieve ID and profileImage of the receiver (receiver username)
+        db.get('SELECT id, profileImage FROM users WHERE username = ?', [receiver], (err, receiverResult) => {
+            if (err || !receiverResult) {
                 console.error('Error finding receiver:', err);
                 return;
             }
 
-            // Query messages between the sender and receiver
-            db.all(`
-                SELECT messages.message, 
-                       sender.username AS senderUsername, 
-                       receiver.username AS receiver 
-                FROM messages 
-                JOIN users AS sender ON messages.senderId = sender.id 
-                JOIN users AS receiver ON messages.recId = receiver.id 
-                WHERE (messages.senderId = ? AND messages.recId = ?) 
-                   OR (messages.senderId = ? AND messages.recId = ?)`,
-                [sender.id, receiver.id, receiver.id, sender.id],
-                (err, messages) => {
-                    if (err) {
-                        console.error('Error fetching messages:', err);
-                        return;
-                    }
-
-                    // Decrypt each message
-                    const decryptedMessages = messages.map(msg => {
-                        try {
-                            return {
-                                message: decrypt(msg.message), // Decrypt the message text
-                                senderUsername: msg.senderUsername,
-                                receiver: msg.receiver
-                            };
-                        } catch (decryptionError) {
-                            console.error('Error decrypting message:', decryptionError);
-                            return null; // Skip the message if it fails to decrypt
-                        }
-                    }).filter(msg => msg !== null); // Filter out null (failed decryption)
-
-                    // Log decrypted messages to verify they are correctly decrypted
-                    console.log('Decrypted messages to send:', decryptedMessages);
-
-                    // Send the array of decrypted messages to the client
-                    socket.emit('messagesResponse', decryptedMessages);
+            // Update the 'receiver' column in the 'users' table for the sender
+            db.run('UPDATE users SET receiver = ? WHERE id = ?', [receiverResult.id, sender.id], (err) => {
+                if (err) {
+                    console.error('Error updating receiver for sender:', err);
+                    return;
                 }
-            );
+                console.log(`Receiver updated successfully for user ${username}`);
+
+                // Fetch messages between the sender and receiver
+                db.all(`
+                    SELECT messages.message, 
+                           messages.read, 
+                           sender.username AS senderUsername, 
+                           receiver.username AS receiverUsername 
+                    FROM messages 
+                    JOIN users AS sender ON messages.senderId = sender.id 
+                    JOIN users AS receiver ON messages.recId = receiver.id 
+                    WHERE (messages.senderId = ? AND messages.recId = ?) 
+                       OR (messages.senderId = ? AND messages.recId = ?)`,
+                    [sender.id, receiverResult.id, receiverResult.id, sender.id],
+                    (err, messages) => {
+                        if (err) {
+                            console.error('Error fetching messages:', err);
+                            return;
+                        }
+
+                        // Decrypt each message
+                        const decryptedMessages = messages.map(msg => {
+                            try {
+                                return {
+                                    message: decrypt(msg.message), // Decrypt the message text
+                                    senderUsername: msg.senderUsername,
+                                    receiverUsername: msg.receiverUsername,
+                                    read: msg.read
+                                };
+                            } catch (decryptionError) {
+                                console.error('Error decrypting message:', decryptionError);
+                                return null; // Skip the message if it fails to decrypt
+                            }
+                        }).filter(msg => msg !== null); // Filter out null (failed decryption)
+
+                        // Log decrypted messages to verify they are correctly decrypted
+                        console.log('Decrypted messages to send:', decryptedMessages);
+
+                        // Send decrypted messages and the receiver's profile image separately
+                        socket.emit('messagesResponse', {
+                            messages: decryptedMessages, // Array of decrypted messages
+                            profileImage: receiverResult.profileImage // The receiver's profile image
+                        });
+
+                        // Now mark messages as read if the receiver (user) has seen them
+                        db.run(`
+                            UPDATE messages 
+                            SET read = 1 
+                            WHERE recId = ? AND senderId = ? 
+                              AND read = 0`, // Only update unread messages
+                            [sender.id, receiverResult.id], // recId is the sender (user), senderId is the receiver
+                            (err) => {
+                                if (err) {
+                                    console.error('Error marking messages as read:', err);
+                                } else {
+                                    console.log(`Messages marked as read between ${username} and ${receiver}`);
+                                }
+                            }
+                        );
+                    }
+                );
+            });
         });
     });
 });
 
-    
-    
-    
-    
+
+
     socket.on('typing', (isTyping, receiver) => {
         console.log(receiver);
     
@@ -405,12 +459,42 @@ socket.on('sendMeMessages', (username, receiver) => {
                             });
                         }
                     });
+    
+                    // Count unread messages for the user
+                    db.all(`
+                        SELECT senderId, COUNT(*) AS unreadCount 
+                        FROM messages 
+                        WHERE recId = ? AND read = 0 
+                        GROUP BY senderId`, [updatedUser.id], (err, unreadCounts) => {
+                        if (err) {
+                            console.error('Error fetching unread messages count:', err);
+                            return;
+                        }
+    
+                        // Fetch usernames for unread counts
+                        const unreadWithUsernames = unreadCounts.map(count => {
+                            return new Promise((resolve) => {
+                                db.get('SELECT username FROM users WHERE id = ?', [count.senderId], (err, sender) => {
+                                    if (err || !sender) {
+                                        console.error('Error fetching sender username:', err);
+                                        resolve({ username: null, unreadCount: count.unreadCount });
+                                    } else {
+                                        resolve({ username: sender.username, unreadCount: count.unreadCount });
+                                    }
+                                });
+                            });
+                        });
+    
+                        // Resolve all promises to get usernames
+                        Promise.all(unreadWithUsernames).then(results => {
+                            // Emit the unread message counts back to the client
+                            io.to(socket.id).emit('unread message counts', results);
+                        });
+                    });
                 });
             });
         });
     });
-    
-    
     
     
     // socket.on('chatMessage', ({ message }) => {
@@ -534,35 +618,47 @@ socket.on('sendMeMessages', (username, receiver) => {
     });
     
     
-    socket.on('confirm invite', ({ decision, invitingId }) => {
-        // Find the ID of the invited user based on the socket ID
+    socket.on('confirm invite', ({ decision, invitingName }) => {
+        // Find the ID of the invited user based on the socket ID (current user)
         db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, invited) => {
             if (err || !invited) {
                 console.error('Invited user not found:', err);
                 return;
             }
     
-            if (decision) {
-                // Update accepted to 1
-                db.run('UPDATE friends SET accepted = 1 WHERE inviting = ? AND invited = ?', [invitingId, invited.id], (err) => {
-                    if (err) {
-                        console.error('Error updating friends table:', err);
-                    } else {
-                        //console.log(`Invitation accepted by user ${invited.id}`);
-                    }
-                });
-            } else {
-                // Remove the row if not accepted
-                db.run('DELETE FROM friends WHERE inviting = ? AND invited = ?', [invitingId, invited.id], (err) => {
-                    if (err) {
-                        console.error('Error deleting from friends table:', err);
-                    } else {
-                        //console.log(`Invitation rejected by user ${invited.id}`);
-                    }
-                });
-            }
+            // Find the ID of the inviting user based on their username (invitingName)
+            db.get('SELECT id FROM users WHERE username = ?', [invitingName], (err, inviting) => {
+                if (err || !inviting) {
+                    console.error('Inviting user not found:', err);
+                    return;
+                }
+    
+                const invitingId = inviting.id;
+                const invitedId = invited.id;
+    
+                if (decision) {
+                    // Update the `accepted` column to 1 if the invitation is accepted
+                    db.run('UPDATE friends SET accepted = 1 WHERE inviting = ? AND invited = ?', [invitingId, invitedId], (err) => {
+                        if (err) {
+                            console.error('Error updating friends table:', err);
+                        } else {
+                            console.log(`Invitation accepted by user ${invitedId}`);
+                        }
+                    });
+                } else {
+                    // Delete the row if the invitation is rejected
+                    db.run('DELETE FROM friends WHERE inviting = ? AND invited = ?', [invitingId, invitedId], (err) => {
+                        if (err) {
+                            console.error('Error deleting from friends table:', err);
+                        } else {
+                            console.log(`Invitation rejected by user ${invitedId}`);
+                        }
+                    });
+                }
+            });
         });
     });
+    
     
     socket.on('receiver', (receiver) => {
         const currentSocketId = socket.id;
@@ -707,14 +803,17 @@ socket.on('block', (blockedUsername, callback) => {
 });
 
 
-    socket.on('disconnect', () => {
-        // Update both socketId and receiver to NULL when a user disconnects
-        db.run('UPDATE users SET socketId = NULL, receiver = NULL WHERE socketId = ?', [socket.id], (err) => {
-            if (err) {
-                console.error('Error clearing socket ID and receiver:', err);
-            }
-        });
+socket.on('disconnect', () => {
+    // Update both socketId and receiver to NULL when a user disconnects
+    db.run('UPDATE users SET socketId = NULL, receiver = NULL WHERE socketId = ?', [socket.id], (err) => {
+        if (err) {
+            console.error('Error clearing socket ID and receiver:', err);
+        } else {
+            console.log(`Socket ID and receiver cleared for socket: ${socket.id}`);
+        }
     });
+});
+
     
     function findBlocked(searchUser, socketId) {
         return new Promise((resolve, reject) => {
@@ -776,8 +875,9 @@ socket.on('block', (blockedUsername, callback) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    //console.log(`Server is listening on port ${PORT}`);
-});
+// const PORT = process.env.PORT || 3000;
+// server.listen(PORT, () => {
+//     //console.log(`Server is listening on port ${PORT}`);
+// });
 
+const a = 6

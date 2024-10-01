@@ -2,7 +2,7 @@ body {
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
   padding: 0;
-  margin: 10px;
+  margin: 0;
   color: white
 }
 label {
@@ -150,16 +150,20 @@ button:hover {
 h1 a {
   color: red;
 }
-
+#mainContent {
+  position: relative;
+  z-index: 0;
+}
 #menu {
   width: 100vw;
   height: 10vh;
   background: transparent;
   display: flex;
+  background: rgb(4, 13, 37);
   background: linear-gradient(0deg, rgba(4, 13, 37, 1) 12%, rgba(23, 104, 112, 1) 85%);
 }
 .menuIcon {
-  font-size: 40px;;
+  font-size: 40px;
 }
 #menuDiv {
   display: flex;
@@ -170,6 +174,7 @@ h1 a {
 .counter {
   margin-top: 10px;
   margin-bottom: auto;
+  background: rgb(63, 94, 251);
   background: radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(70, 199, 252, 1) 100%);
   border-radius: 50%;
   width: 15px;    
@@ -180,7 +185,7 @@ h1 a {
   z-index: 2;
   position: absolute;  
   top: 0;
-  left: calc(22%); 
+  left: calc(20%); 
 }
 
 .dropdown-container {
@@ -201,13 +206,13 @@ h1 a {
 
 /* Dropdown content styling */
 .dropdown-content {
-  position: absolute; /* Use absolute positioning */
+  position: absolute;
   width: 10vw;
-  max-height: 0; /* Initially hidden */
-  overflow: hidden; /* Prevent scrollbar by default */
+  max-height: 0;
+  overflow-y: hidden; /* Prevent scrollbar by default */
   visibility: hidden;
   opacity: 0;
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; /* Delay visibility change */
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
   z-index: 1;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: #0483c9;
@@ -216,9 +221,8 @@ h1 a {
 /* Show dropdown on hover with smooth transition */
 .dropdown-container:hover .dropdown-content {
   max-height: 200px; /* Max height of the dropdown before scrolling */
-  visibility: visible; /* Make it visible */
-  opacity: 1; /* Fade in */
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Smooth transition */
+  visibility: visible;
+  opacity: 1;
 }
 
 /* Sliding line effect */
@@ -295,14 +299,6 @@ h1 a {
 
 .dropdown-content div:hover {
   background-color: #ddd;
-}
-
-/* Hide dropdown with sliding effect */
-.dropdown-container .dropdown-content.hide {
-  max-height: 0; /* Hide the content */
-  opacity: 0; /* Fade out */
-  visibility: hidden; /* Prevent interaction */
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; /* Smooth transition */
 }
 
 #friends {
@@ -750,7 +746,7 @@ h1 a {
   --_p: 0;
   border-bottom-left-radius: 0 0;
   align-self: end;
-  margin-right: 20px;
+  margin-left: 20px;
   background: #87878a;
 }
 .right {
@@ -827,36 +823,3 @@ h1 a {
   position: relative; /* Position for stacking context */
 }
 
-#mainContent .modal {
-  display: none; /* Initially hidden */
-  position: absolute; /* Absolute positioning within the parent */
-  left: 50%; /* Center horizontally */
-  top: 50%; /* Center vertically */
-  width: 55vw;
-  height: 20vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 10;
-
-  /* Use transform to align the center of the modal */
-  transform: translate(-50%, -50%) scale(0); /* Start hidden with scale 0 */
-  transition: transform 0.3s ease; /* Transition effect for scaling */
-}
-
-#mainContent .modal.show {
-  display: flex; /* Show the modal */
-  transform: translate(-50%, -50%) scale(1); /* Grow modal */
-}
-
-.modal-content {
-  background: rgb(63,94,251);
-  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%);
-  padding: 20px;
-  /* border-radius: 5px; */
-  text-align: center;
-  width: 100%;
-  height: 100%;
-}
-.modal button {
-  margin: 10px;
-  padding: 8px 16px;
-}
