@@ -1,6 +1,6 @@
 body {
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%); */
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
   padding: 0;
   margin: 0;
   color: white
@@ -43,8 +43,6 @@ button:hover {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  height: 95%;
-  overflow-x: hidden;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
 #message-container::-webkit-scrollbar, #searchUsers::-webkit-scrollbar, #users::-webkit-scrollbar {
@@ -56,8 +54,6 @@ button:hover {
 }
 #search-input {
   align-self: center;
-  margin: 10px;
-  width: 15vw;
 }
 
 .user {
@@ -91,12 +87,10 @@ button:hover {
     width: 40px; /* Same size as the image */
     height: 40px; /* Same size as the image */
     background: rgb(63,94,251);
-    background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(67,97,110,1) 100%);
+    background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(24,26,138,1) 100%);
     border-radius: 50%; /* Make it a circle */
     font-weight: bold; /* Make initials bold */
     color: white; /* Change color as needed */
-    font-size: 25px;
-    font-weight: bolder;
 }
 
 /* .loading-placeholder {
@@ -178,16 +172,15 @@ h1 a {
   margin-bottom: auto;
   background: radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(70, 199, 252, 1) 100%);
   border-radius: 50%;
-  width: 21px;    
-  height: 21px;
+  width: 15px;    
+  height: 15px;
   display: flex; 
   justify-content: center;
   align-items: center;
   z-index: 2;
   position: absolute;  
   top: 0;
-  left: calc(22%);
-  font-weight: bolder; 
+  left: calc(22%); 
 }
 
 .dropdown-container {
@@ -346,7 +339,12 @@ h1 a {
   display: none;
   color: green;
 }
-
+#inputAndIcons {
+  display: flex;
+  margin-bottom: 10px;
+  width: 80%;
+  
+}
 @keyframes blinker {
   50% {
     opacity: 0;
@@ -363,7 +361,7 @@ h1 a {
   height: 100%;
   flex-direction: column;
   height: 90vh;
-  width: 50vw;
+  width: calc(50vw - 1px);
   /* border-right: solid 1px #3f5efb;
   border-left: solid 1px #3f5efb;
   box-shadow: 
@@ -425,9 +423,7 @@ h1 a {
   justify-content: center;
   align-items: center;
   background: rgb(63,94,251);
-  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(67,97,110,1) 100%);
-  font-size: 50px;
-  font-weight: bolder;
+  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(24,26,138,1) 100%);
 }
 #avatar {
   width: 80px;
@@ -473,8 +469,6 @@ h1 a {
   min-height: 0; /* Prevents overflow issues */
   padding: 0; /* Optional padding around chat */
   overflow: hidden;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
 }
 #receiver {
   margin-bottom: auto;
@@ -691,13 +685,11 @@ h1 a {
 }
 #inputAndIcons {
   display: flex;
-  
+  margin-bottom: 10px;
   width: 100%;
   justify-content: center;
   /* border-top: solid 1px #3f5efb;
   box-shadow: 0px -4px 6px 0px rgba(63, 94, 251, 0.5); Adjusted shadow */
-  background: rgb(4,13,37);
-  
 }
 
 @keyframes blinker {
@@ -823,65 +815,26 @@ h1 a {
   padding: 10px;
   font-weight: bold;
 }
-#friends {
-  position: absolute;
-  width: 25vw; /* Take up 25% of the viewport width */
-  left: 0; /* Start fully visible */
-  top: 10vh;
-  height: 90vh;
-  transition: left 0.5s ease; /* Animate horizontal movement */
-  z-index: -10;
-  display: flex;
-  flex-direction: column;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
-}
-
-#friends.move-left {
-  left: +25vw; /* Move friends left by 25% of the viewport */
-}
-
-#friends.move-right {
-  left: 0; /* Back to original position (fully visible) */
-}
-
 #searchUsers {
   position: absolute;
-  left: -25vw; /* Start off-screen to the left */
-  top: 10vh;
-  width: 25vw; /* Take up 25% of the viewport width */
-  height: 90vh;
-  transition: left 0.5s ease, opacity 0.5s ease; /* Animate horizontal movement */
-  opacity: 1;
-  visibility: visible;
+  left: -25vw; /* Start completely off-screen */
+  top: +10vh;
+  /* width: 25vw; Set width as 50% of viewport width */
+  height: 90vh; /* Fixed height */
+  /* background-color: #007BFF; Rectangle color */
+  transition: left 0.5s ease, opacity 0.5s ease; /* Animation effect */
+  opacity: 0; /* Start invisible */
+  visibility: hidden; /* Initially hidden */
   z-index: 1;
   display: flex;
   flex-direction: column;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
-
-#searchUsers.move-left {
-  left: 0; /* Move searchUsers fully into view (same as friends' original position) */
-}
-
-#searchUsers.move-right {
-  left: -25vw; /* Move searchUsers back off-screen to the left */
-}
-
 
 #searchUsers.animate {
-  left: 0; /* Move into view to overlap with #friends */
-  opacity: 1;
-  visibility: visible;
+  left: 0; /* Move into view */
+  opacity: 1; /* Make visible */
+  visibility: visible; /* Ensure it's visible */
 }
-
-#searchUsers.hidden {
-  left: 25vw; /* Move back off-screen */
-  opacity: 0;
-  visibility: hidden;
-}
-
 
 #content {
   width: 100vw;
