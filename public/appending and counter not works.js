@@ -1,4 +1,4 @@
-const socket = io.connect('http://localhost:3004');
+const socket = io.connect('http://localhost:3000');
 const baseUrl = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const messCounter = document.getElementById('messCounter');
     const groupCounter = document.getElementById('groupCounter');
     const unreadMessages = document.createElement('div');
-    const receiverElement = document.getElementById('receiverName');
     let messageValue = 0;
     let receiver = '';
     const cryptoDiv = document.getElementById("crypto");
@@ -54,39 +53,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    const searchUsers = document.getElementById('searchUsers');
+    const options = document.getElementById('options');
     const friends = document.getElementById('friends');
 
-    function updatesearchUsersWidth() {
+    function updateOptionsWidth() {
         // Calculate the width of the #friends div
         const friendsWidth = friends.offsetWidth; // Get width in pixels
-        // Set the width of the #searchUsers div to match the #friends width
-        searchUsers.style.width = `${friendsWidth}px`; // Set width in pixels
+        // Set the width of the #options div to match the #friends width
+        options.style.width = `${friendsWidth}px`; // Set width in pixels
     }
 
 // Call the function initially to set the width when the page loads
-    updatesearchUsersWidth();
+    updateOptionsWidth();
 
     findUsers.addEventListener('click', () => {
-        if (searchUsers.classList.contains('move-left')) {
-            // Move both elements to the right
-            searchUsers.classList.remove('move-left');
-            searchUsers.classList.add('move-right');
-            
-            friends.classList.remove('move-left');
-            friends.classList.add('move-right');
+        if (options.classList.contains('animate')) {
+            // Hide the div
+            options.classList.remove('animate');
+            options.addEventListener('transitionend', () => {
+                options.style.visibility = 'hidden'; // Hide after animation ends
+            }, { once: true });
         } else {
-            // Move both elements to the left
-            searchUsers.classList.remove('move-right');
-            searchUsers.classList.add('move-left');
-            
-            friends.classList.remove('move-right');
-            friends.classList.add('move-left');
+            // Show the div
+            options.style.visibility = 'visible'; // Ensure it is visible
+            // Trigger reflow
+            void options.offsetWidth; // Forces reflow to apply animation
+            // Start animation
+            options.classList.add('animate');
         }
+        document.getElementById('friends').classList.toggle('hidden');
     });
 
 // Add resize event listener
-    window.addEventListener('resize', updatesearchUsersWidth);
+    window.addEventListener('resize', updateOptionsWidth);
 
     
     socket.on('connect', () => {
@@ -94,55 +93,10 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('login', username);
         console.log('Username emitted to server:', username);
     });
-    socket.on('invitationConfirmed', (data) => {
-        console.log(data);
-    });
-    socket.on('unread message counts', (unreadCounts) => {
-        let newMessageCntr = 0;
-        unreadCounts.forEach(newMessage => {
-            const unreadMessage = document.createElement('div');
-            unreadMessage.classList.add('unreadMessages');
-            unreadMessage.setAttribute('value', `${newMessage.unreadCount}`);
-            unreadMessage.setAttribute('data-username', newMessage.username); // Set data-username for this user
-            unreadMessage.textContent = `${newMessage.username} ${newMessage.unreadCount}`;
-            document.getElementById("messagesContent").appendChild(unreadMessage);
-            newMessageCntr += newMessage.unreadCount// Set initial value to 1    
-        });
-        messCounter.setAttribute('value', newMessageCntr);
-        messCounter.textContent = newMessageCntr;
-    //     let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-
-    // // Check if the user's unread message div already exists
-    // if (!existingMessage) {
-    //     // Create a new unread message div for the specific user
-    //     const unreadMessage = document.createElement('div');
-    //     unreadMessage.classList.add('unreadMessages');
-    //     unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-    //     unreadMessage.setAttribute('data-username', user); // Set data-username for this user
-    //     unreadMessage.textContent = `${user} 1`; // Display initial unread count
-
-    //     // Append to the messages content
-    //     document.getElementById("messagesContent").appendChild(unreadMessage);
-    // } else {
-    //     // If the element exists, update its value
-    //     let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    //     currentValue++; // Increment the value
-
-    //     // Set the new value and update displayed text
-    //     existingMessage.setAttribute('value', currentValue);
-    //     existingMessage.textContent = `${user} ${currentValue}`;
-    // }
-
-    // // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    // messCounter.setAttribute('value', messageValue);
-    // messCounter.textContent = messageValue;
-    });
+    
     socket.on('blockedNotification', (data) => {
         console.log(data);
-        socket.emit('findUsers', searchUser);
+        //socket.emit('findUsers', searchUser);
     });
     socket.on('user info', ({ id, profileImage }) => {
         console.log(`User ID: ${id}`);
@@ -289,7 +243,7 @@ socket.on('inviteProcessed', () => {
 });
 socket.on('foundUsers', async (founded) => {
     console.log('Found users:', founded);
-    
+    const receiverElement = document.getElementById('receiverName');
     // Clear previous user list
     usersDiv.innerHTML = ''; // Clear the previous list
 
@@ -400,7 +354,23 @@ socket.on('foundUsers', async (founded) => {
             });
         });
         
-        
+        socket.on('messagesResponse', (decryptedMessages) => {
+            console.log(decryptedMessages);
+            //const chat = document.getElementById("chat");
+            chat.innerHTML = '';
+            decryptedMessages.forEach(message => {
+                if (message.senderUsername == username) {
+                    chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${message.message}</div>`);
+                    adjustMarginForScrollbar();
+                    jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
+                }
+                else {
+                    chat.innerHTML += (`<div class="bubble right" style="word-break: break-word">${message.message}</div>`);
+                    jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
+                }
+
+            });
+        })
             // Select all elements with the class 'send'
 const sendButtons = document.querySelectorAll('.send');
 
@@ -445,7 +415,7 @@ const sendButtons = document.querySelectorAll('.send');
     });
 
     usersDiv.appendChild(fragment);
-    
+
     // Hide loading icon after appending users
     // loadingIcon.classList.add('display');
     // loadingIcon.classList.remove('animate-spin');
@@ -499,24 +469,24 @@ function handleIncomingMessage(message) {
     jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
 }
 
-// Main function for handling new messages
 function handleOtherMessage(user) {
-    // Use a selector to check if there's a div with data-username matching the user
-    let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
+    // Use a class selector with a dot for user
+    
 
-    // Check if the user's unread message div already exists
-    if (!existingMessage) {
-        // Create a new unread message div for the specific user
+    // Check if the element exists
+    if (document.querySelector('unreadMessages') && document.querySelector('unreadMessages').getAttribute('data-username') != user) {
+        // Create a new unread message div
         const unreadMessage = document.createElement('div');
         unreadMessage.classList.add('unreadMessages');
-        unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-        unreadMessage.setAttribute('data-username', user); // Set data-username for this user
-        unreadMessage.textContent = `${user} 1`; // Display initial unread count
+        unreadMessage.classList.add(user); // Just add the class name without a dot
+        unreadMessage.setAttribute('value', '0');
+        unreadMessage.setAttribute('data-username', user);
 
         // Append to the messages content
         document.getElementById("messagesContent").appendChild(unreadMessage);
     } else {
         // If the element exists, update its value
+        const existingMessage = document.querySelector(userSelector);
         let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
         currentValue++; // Increment the value
 
@@ -528,118 +498,16 @@ function handleOtherMessage(user) {
     // Update the overall message counter
     let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
     messageValue++;
-    console.log(messageValue);
     messCounter.setAttribute('value', messageValue);
     messCounter.textContent = messageValue;
 }
 
-// Attach the global click event listener to the parent container
-const messagesContent = document.getElementById("messagesContent");
-messagesContent.addEventListener('click', (event) => {
-    const unreadMessage = event.target.closest('.unreadMessages');
-    // Check if the clicked element is an unread message
-    document.querySelector('.dropdown-content').classList.add('hide');
-    document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
-        // Check which property has finished transitioning
-        document.querySelector('.dropdown-content').classList.remove('hide');
-        unreadMessage.remove();
-    });
-    
-    //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-    
-    // Check if the user's unread message div already exists
-    
-        // Create a new unread message div for the specific user
-        
-        
-
-        // Append to the messages content
-        //document.getElementById("messagesContent").appendChild(unreadMessage);
-    
-        // If the element exists, update its value
-        const currentValue = parseInt(unreadMessage.getAttribute('value'), 10); // Default to 0 if NaN
-        const updatedCounter = parseInt(messCounter.getAttribute('value'), 10) - currentValue; // Increment the value
-
-        // Set the new value and update displayed text
-        // existingMessage.setAttribute('value', currentValue);
-        // existingMessage.textContent = `${user} ${currentValue}`;
-    
-
-    // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    messCounter.setAttribute('value', updatedCounter);
-    messCounter.textContent = updatedCounter;
-    if (unreadMessage) {
-        // Log the data-username attribute
-        // const username = unreadMessage.getAttribute('data-username');
-        console.log('Clicked username:', unreadMessage.getAttribute('data-username'));
-
-        // Emit the message request (assuming socket is defined)
-        receiver = unreadMessage.getAttribute('data-username'); // Use the user directly
-
-        socket.emit('sendMeMessages', username, receiver);
-    }
-});
-const invitationContent = document.getElementById("invitationContent");
-
-invitationContent.addEventListener('click', (event) => {
-    // Check if the clicked element is an unread invitation
-    const invitation = event.target.closest('.invitation');
-    
-    if (invitation) {
-        // Log the data-username attribute
-        console.log('Clicked username:', invitation.getAttribute('data-username'));
-        
-        // Prompt the user with the confirm modal
-        customConfirm(invitation.getAttribute('data-username'))
-            .then((response) => {
-                if (response === 'yes') {
-                    // Remove the clicked invitation from the DOM
-                    invitation.remove();
-                    
-                    // Emit the invite decision through WebSocket or handle it here
-                    
-                    socket.emit('confirm invite', { decision: true, invitingName: invitation.getAttribute('data-username') });
-                }
-                else if (response === 'no') {
-                    invitation.remove();
-                    
-                    // Emit the invite decision through WebSocket or handle it here
-                    
-                    socket.emit('confirm invite', { decision: false, invitingName: invitation.getAttribute('data-username') });
-                }
-            });
-    }
-});
-
-
-
-
 
     socket.on('send invitation', (data) => {
         console.log('Invitation data received:', data);
-        
-
-    // Check if the user's unread message div already exists
-    
-        // Create a new unread message div for the specific user
-        const invitation = document.createElement('div');
-        invitation.classList.add('invitation');
-        
-        invitation.setAttribute('data-username', data.from); // Set data-username for this user
-        invitation.textContent = `${data.from}`; // Display initial unread count
-
-        // Append to the messages content
-        document.getElementById("invitationContent").appendChild(invitation);
-        let invitaionValue = parseInt(invCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-        invitaionValue++;
-        console.log(invitaionValue);
-        invCounter.setAttribute('value', invitaionValue);
-        invCounter.textContent = invitaionValue;
-        document.getElementById("invitationContent").appendChild(invitation);
-        
+        // const userConfirmed = confirm(`${data.from} wants to be your friend. Do you accept?`);
+        // const inviteDecision = userConfirmed ? true : false;
+        // socket.emit('confirm invite', { decision: inviteDecision, invitingId: data.id });
     });
     
 const typingIndicator = document.getElementById('typingIndicator');
@@ -755,7 +623,7 @@ socket.on('userTyping', ({ isTyping, sender }) => {
 
 function adjustMarginForScrollbar() {
     //const chat = document.getElementById('chat');
-    const messages = document.querySelectorAll('.left');
+    const messages = document.querySelectorAll('.right');
 
     // Check if the scrollbar is visible
     const hasScrollbar = chat.scrollHeight > chat.clientHeight;
@@ -771,140 +639,5 @@ function adjustMarginForScrollbar() {
 
 
 
-socket.on('messagesResponse', (decryptedMessages) => {
-    console.log(decryptedMessages);
-    //const chat = document.getElementById("chat");
-    
-
-            // Emit findUsers without awaiting the response
-            
-
-            // Assume that the server will respond with found users
-            
-                
-                
-                    
-                    receiverElement.textContent = receiver;
-                    // Clear existing content in #receiverAvatar
-                    receiverAvatar.innerHTML = ''; 
-                    
-                    if (decryptedMessages.profileImage) {
-                    // Check for the presence of an img element
-                        const img = document.createElement('img');
-                        img.id = 'receiverAvatar';
-                        img.src = decryptedMessages.profileImage;
-                        receiverAvatar.appendChild(img);
-                    
-                    }
-                    else {
-                        const initials = document.createElement('div');
-                        initials.id = 'receiverInitials';
-                        initials.textContent = receiver.charAt(0).toUpperCase();
-                        receiverAvatar.appendChild(initials);
-                    }
-                    // Create initials element but keep it hidden initially
-                    
-                    
-                    // Keep hidden initially
-                    
-
-                    // Append the image or initials based on availability
-                    
-
-                    
-                
-        
-    chat.innerHTML = '';
-    decryptedMessages.messages.forEach(message => {
-        if (message.senderUsername == username) {
-            chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${message.message}</div>`);
-            adjustMarginForScrollbar();
-            jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-        }
-        else {
-            chat.innerHTML += (`<div class="bubble right" style="word-break: break-word">${message.message}</div>`);
-            jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-        }
-
-    });
-})
-function customConfirm(inviting) {
-    return new Promise((resolve) => {
-        // Set the message
-        document.getElementById('confirmText').textContent = `${inviting} has sent you a friend request. Do you accept?`;
-
-        // Show the modal with a grow animation
-        const modal = document.getElementById('confirmModal');
-        modal.style.display = 'flex';
-        setTimeout(() => {
-            modal.classList.add('show');
-        }, 10); // Slight delay to ensure the transition is applied
-
-        // Yes button event
-        document.getElementById('yesBtn').onclick = function() {
-            resolve('yes');
-            let invitaionValue = parseInt(invCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-            invitaionValue--;
-            console.log(invitaionValue);
-            invCounter.setAttribute('value', invitaionValue);
-            invCounter.textContent = invitaionValue;
-            closeModal();
-        };
-
-        // No button event
-        document.getElementById('noBtn').onclick = function() {
-            let invitaionValue = parseInt(invCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-            invitaionValue--;
-            console.log(invitaionValue);
-            invCounter.setAttribute('value', invitaionValue);
-            invCounter.textContent = invitaionValue;
-            resolve('no');
-            closeModal();
-        };
-
-        // Cancel button event
-        document.getElementById('cancelBtn').onclick = function() {
-            resolve('cancel');
-            closeModal();
-        };
-
-        // Close modal function
-        function closeModal() {
-            modal.classList.remove('show');
-            setTimeout(() => {
-                modal.style.display = 'none'; // Hide after shrink animation
-            }, 300); // Delay matches the CSS transition duration
-        }
-    });
-}
-
-
-// Close the modal
-function closeModal() {
-    document.getElementById('confirmModal').style.display = 'none';
-}
-
-// Example usage
-// document.getElementById('showConfirm').onclick = async function() {
-//     const data = { from: 'John' }; // Example data
-//     const result = await customConfirm(`${data.from} wants to be your friend. Do you accept?`);
-
-//     if (result === 'yes') {
-//         console.log("User accepted the friend request.");
-//     } else if (result === 'no') {
-//         console.log("User declined the friend request.");
-//     } else {
-//         console.log("User canceled the action.");
-//     }
-// };
-document.querySelector('.dropdownToggle').addEventListener('click', function() {
-    const dropdownContent = this.nextElementSibling; // Get the next sibling (.dropdown-content)
-    
-    if (dropdownContent.classList.contains('hide')) {
-        dropdownContent.classList.remove('hide'); // Show the content
-    } else {
-        dropdownContent.classList.add('hide'); // Hide the content
-    }
-});
 
 });
