@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "dev": "npx kill-port 3000 3001 3004 && node start-dev.js"
+    "dev": "concurrently \"npx kill-port 3000 3001 && npx nodemon server.js\" \"browser-sync start --config bs-config.js\""
   },
   "keywords": [],
   "author": "",
@@ -35,7 +35,6 @@
     "gulp": "^5.0.0",
     "gulp-sass": "^5.1.0",
     "nodemon": "^3.1.7",
-    "npm-run-all": "^4.1.5",
     "sass": "^1.79.1"
   }
 }

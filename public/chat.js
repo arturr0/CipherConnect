@@ -539,14 +539,6 @@ function handleOtherMessage(user) {
 
 // Attach the global click event listener to the parent container
 const messagesContent = document.getElementById("messagesContent");
-// messagesContent.addEventListener('mouseenter', () => {
-//     document.querySelector('.dropdown-content').classList.remove('hide');
-// });
-
-// // Hide dropdown on mouse leave from messagesContent
-// messagesContent.addEventListener('mouseleave', () => {
-//     document.querySelector('.dropdown-content').classList.add('hide');
-// });
 messagesContent.addEventListener('click', (event) => {
     const unreadMessage = event.target.closest('.unreadMessages');
     // Check if the clicked element is an unread message
@@ -556,7 +548,6 @@ messagesContent.addEventListener('click', (event) => {
         document.querySelector('.dropdown-content').classList.remove('hide');
         unreadMessage.remove();
     });
-   
     
     //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
     
@@ -914,20 +905,14 @@ function customConfirm(inviting) {
 //         console.log("User canceled the action.");
 //     }
 // };
-// document.querySelector('.dropdownToggle').addEventListener('click', function() {
-//     const dropdownContent = this.nextElementSibling; // Get the next sibling (.dropdown-content)
+document.querySelector('.dropdownToggle').addEventListener('click', function() {
+    const dropdownContent = this.nextElementSibling; // Get the next sibling (.dropdown-content)
     
-//     if (dropdownContent.classList.contains('hide')) {
-//         dropdownContent.classList.remove('hide'); // Show the content
-//     } else {
-//         dropdownContent.classList.add('hide'); // Hide the content
-//         document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
-//             // Check which property has finished transitioning
-//             document.querySelector('.dropdown-content').classList.remove('hide');
-            
-//         });
-        
-//     }
-// });
+    if (dropdownContent.classList.contains('hide')) {
+        dropdownContent.classList.remove('hide'); // Show the content
+    } else {
+        dropdownContent.classList.add('hide'); // Hide the content
+    }
+});
 
 });

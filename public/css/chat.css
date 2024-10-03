@@ -4,7 +4,6 @@ body {
   padding: 0;
   margin: 0;
   color: white
-  
 }
 label {
   display: flex;
@@ -325,7 +324,21 @@ h1 a {
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
  } */
- 
+ #friends {
+  position: absolute;
+  width: 25vw;
+  left: 0; /* Start completely off-screen */
+  top: +10vh;
+  /* width: 25vw; Set width as 50% of viewport width */
+  height: 90vh; /* Fixed height */
+  /* background-color: #007BFF; Rectangle color */
+  transition: left 0.5s ease, opacity 0.5s ease; /* Animation effect */
+  /* opacity: 0; Start invisible */
+  /* visibility: hidden; Initially hidden */
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+}
 #friends.hidden {
   opacity: 0;
   visibility: hidden;
@@ -826,18 +839,6 @@ h1 a {
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
-#friendsSearchBg {
-  position: absolute;
-  width: 25vw; /* Take up 25% of the viewport width */
-  left: 0; /* Start fully visible */
-  top: 10vh;
-  height: 90vh;
-  
-  z-index: -11;
-  
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
-}
 
 #friends.move-left {
   left: +25vw; /* Move friends left by 25% of the viewport */
@@ -849,32 +850,40 @@ h1 a {
 
 #searchUsers {
   position: absolute;
-  transform: translateX(-100%); /* Start off-screen to the left */
+  left: -25vw; /* Start off-screen to the left */
   top: 10vh;
-  width: 25vw;
+  width: 25vw; /* Take up 25% of the viewport width */
   height: 90vh;
-  transition: transform 0.5s ease, opacity 0.5s ease;
+  transition: left 0.5s ease, opacity 0.5s ease; /* Animate horizontal movement */
   opacity: 1;
   visibility: visible;
   z-index: 1;
   display: flex;
   flex-direction: column;
+  background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 
 #searchUsers.move-left {
-  transform: translateX(0); /* Fully in view */
+  left: 0; /* Move searchUsers fully into view (same as friends' original position) */
 }
 
 #searchUsers.move-right {
-  transform: translateX(-100%); /* Move back off-screen */
+  left: -25vw; /* Move searchUsers back off-screen to the left */
+}
+
+
+#searchUsers.animate {
+  left: 0; /* Move into view to overlap with #friends */
+  opacity: 1;
+  visibility: visible;
 }
 
 #searchUsers.hidden {
+  left: 25vw; /* Move back off-screen */
   opacity: 0;
   visibility: hidden;
 }
-
 
 
 #content {
