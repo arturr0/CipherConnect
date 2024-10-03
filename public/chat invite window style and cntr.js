@@ -1,4 +1,4 @@
-const socket = io.connect('http://localhost:3004');
+const socket = io.connect('http://localhost:3000');
 const baseUrl = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const receiverElement = document.getElementById('receiverName');
     let messageValue = 0;
     let receiver = '';
+   
     const cryptoDiv = document.getElementById("crypto");
     const originalWidth = cryptoDiv.offsetWidth;
     document.getElementById("crypto").addEventListener('click', () => {
@@ -54,39 +55,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    const searchUsers = document.getElementById('searchUsers');
+    const options = document.getElementById('options');
     const friends = document.getElementById('friends');
 
-    function updatesearchUsersWidth() {
+    function updateOptionsWidth() {
         // Calculate the width of the #friends div
         const friendsWidth = friends.offsetWidth; // Get width in pixels
-        // Set the width of the #searchUsers div to match the #friends width
-        searchUsers.style.width = `${friendsWidth}px`; // Set width in pixels
+        // Set the width of the #options div to match the #friends width
+        options.style.width = `${friendsWidth}px`; // Set width in pixels
     }
 
 // Call the function initially to set the width when the page loads
-    updatesearchUsersWidth();
+    updateOptionsWidth();
 
     findUsers.addEventListener('click', () => {
-        if (searchUsers.classList.contains('move-left')) {
-            // Move both elements to the right
-            searchUsers.classList.remove('move-left');
-            searchUsers.classList.add('move-right');
-            
-            friends.classList.remove('move-left');
-            friends.classList.add('move-right');
+        if (options.classList.contains('animate')) {
+            // Hide the div
+            options.classList.remove('animate');
+            options.addEventListener('transitionend', () => {
+                options.style.visibility = 'hidden'; // Hide after animation ends
+            }, { once: true });
         } else {
-            // Move both elements to the left
-            searchUsers.classList.remove('move-right');
-            searchUsers.classList.add('move-left');
-            
-            friends.classList.remove('move-right');
-            friends.classList.add('move-left');
+            // Show the div
+            options.style.visibility = 'visible'; // Ensure it is visible
+            // Trigger reflow
+            void options.offsetWidth; // Forces reflow to apply animation
+            // Start animation
+            options.classList.add('animate');
         }
+        document.getElementById('friends').classList.toggle('hidden');
     });
 
 // Add resize event listener
-    window.addEventListener('resize', updatesearchUsersWidth);
+    window.addEventListener('resize', updateOptionsWidth);
 
     
     socket.on('connect', () => {
@@ -94,56 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('login', username);
         console.log('Username emitted to server:', username);
     });
-    socket.on('invitationConfirmed', (data) => {
-        console.log(data);
-    });
     
-    socket.on('friendsList', (data) => {
-        console.log(data);
-    });
-    socket.on('unread message counts', (unreadCounts) => {
-        let newMessageCntr = 0;
-        unreadCounts.forEach(newMessage => {
-            const unreadMessage = document.createElement('div');
-            unreadMessage.classList.add('unreadMessages');
-            unreadMessage.setAttribute('value', `${newMessage.unreadCount}`);
-            unreadMessage.setAttribute('data-username', newMessage.username); // Set data-username for this user
-            unreadMessage.textContent = `${newMessage.username} ${newMessage.unreadCount}`;
-            document.getElementById("messagesContent").appendChild(unreadMessage);
-            newMessageCntr += newMessage.unreadCount// Set initial value to 1    
-        });
-        messCounter.setAttribute('value', newMessageCntr);
-        messCounter.textContent = newMessageCntr;
-    //     let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-
-    // // Check if the user's unread message div already exists
-    // if (!existingMessage) {
-    //     // Create a new unread message div for the specific user
-    //     const unreadMessage = document.createElement('div');
-    //     unreadMessage.classList.add('unreadMessages');
-    //     unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-    //     unreadMessage.setAttribute('data-username', user); // Set data-username for this user
-    //     unreadMessage.textContent = `${user} 1`; // Display initial unread count
-
-    //     // Append to the messages content
-    //     document.getElementById("messagesContent").appendChild(unreadMessage);
-    // } else {
-    //     // If the element exists, update its value
-    //     let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    //     currentValue++; // Increment the value
-
-    //     // Set the new value and update displayed text
-    //     existingMessage.setAttribute('value', currentValue);
-    //     existingMessage.textContent = `${user} ${currentValue}`;
-    // }
-
-    // // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    // messCounter.setAttribute('value', messageValue);
-    // messCounter.textContent = messageValue;
-    });
     socket.on('blockedNotification', (data) => {
         console.log(data);
         socket.emit('findUsers', searchUser);
@@ -539,51 +491,10 @@ function handleOtherMessage(user) {
 
 // Attach the global click event listener to the parent container
 const messagesContent = document.getElementById("messagesContent");
-// messagesContent.addEventListener('mouseenter', () => {
-//     document.querySelector('.dropdown-content').classList.remove('hide');
-// });
-
-// // Hide dropdown on mouse leave from messagesContent
-// messagesContent.addEventListener('mouseleave', () => {
-//     document.querySelector('.dropdown-content').classList.add('hide');
-// });
 messagesContent.addEventListener('click', (event) => {
-    const unreadMessage = event.target.closest('.unreadMessages');
     // Check if the clicked element is an unread message
-    document.querySelector('.dropdown-content').classList.add('hide');
-    document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
-        // Check which property has finished transitioning
-        document.querySelector('.dropdown-content').classList.remove('hide');
-        unreadMessage.remove();
-    });
-   
+    const unreadMessage = event.target.closest('.unreadMessages');
     
-    //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
-    
-    // Check if the user's unread message div already exists
-    
-        // Create a new unread message div for the specific user
-        
-        
-
-        // Append to the messages content
-        //document.getElementById("messagesContent").appendChild(unreadMessage);
-    
-        // If the element exists, update its value
-        const currentValue = parseInt(unreadMessage.getAttribute('value'), 10); // Default to 0 if NaN
-        const updatedCounter = parseInt(messCounter.getAttribute('value'), 10) - currentValue; // Increment the value
-
-        // Set the new value and update displayed text
-        // existingMessage.setAttribute('value', currentValue);
-        // existingMessage.textContent = `${user} ${currentValue}`;
-    
-
-    // Update the overall message counter
-    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-    // messageValue++;
-    // console.log(messageValue);
-    messCounter.setAttribute('value', updatedCounter);
-    messCounter.textContent = updatedCounter;
     if (unreadMessage) {
         // Log the data-username attribute
         // const username = unreadMessage.getAttribute('data-username');
@@ -841,47 +752,37 @@ socket.on('messagesResponse', (decryptedMessages) => {
 
     });
 })
-function closeModal() {
-    const modal = document.getElementById('confirmModal');
-    modal.classList.remove('show'); // Trigger shrink
-    // modal.style.opacity = '0'; // Fade out
-    // setTimeout(() => {
-    //     modal.style.visibility = 'hidden'; // Hide after shrink animation
-    //     modal.style.transform = 'translate(-50%, -50%) scale(0)'; // Reset transform
-    // }, 300); // Delay matches the CSS transition duration
-}
-
 function customConfirm(inviting) {
     return new Promise((resolve) => {
         // Set the message
         document.getElementById('confirmText').textContent = `${inviting} has sent you a friend request. Do you accept?`;
 
-        // Show the modal
+        // Show the modal with a grow animation
         const modal = document.getElementById('confirmModal');
-        modal.style.visibility = 'visible'; // Make it visible immediately
-        
-
-        // Trigger the animation
+        modal.style.display = 'flex';
         setTimeout(() => {
-            // modal.style.opacity = '1'; // Fade in
-            // modal.style.transform = 'translate(-50%, -50%) scale(1)'; // Grow modal
-            // modal.classList.add('show'); // Add class to trigger grow animation
             modal.classList.add('show');
         }, 10); // Slight delay to ensure the transition is applied
-
-         // Short delay to ensure transition is applied
 
         // Yes button event
         document.getElementById('yesBtn').onclick = function() {
             resolve('yes');
-            updateInvitationCounter();
+            let invitaionValue = parseInt(invCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
+            invitaionValue--;
+            console.log(invitaionValue);
+            invCounter.setAttribute('value', invitaionValue);
+            invCounter.textContent = invitaionValue;
             closeModal();
         };
 
         // No button event
         document.getElementById('noBtn').onclick = function() {
+            let invitaionValue = parseInt(invCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
+            invitaionValue--;
+            console.log(invitaionValue);
+            invCounter.setAttribute('value', invitaionValue);
+            invCounter.textContent = invitaionValue;
             resolve('no');
-            updateInvitationCounter();
             closeModal();
         };
 
@@ -891,14 +792,20 @@ function customConfirm(inviting) {
             closeModal();
         };
 
-        // Function to update the invitation counter
-        function updateInvitationCounter() {
-            let invitaionValue = parseInt(document.getElementById('invCounter').getAttribute('value'), 10) || 0;
-            invitaionValue--;
-            document.getElementById('invCounter').setAttribute('value', invitaionValue);
-            document.getElementById('invCounter').textContent = invitaionValue;
+        // Close modal function
+        function closeModal() {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none'; // Hide after shrink animation
+            }, 300); // Delay matches the CSS transition duration
         }
     });
+}
+
+
+// Close the modal
+function closeModal() {
+    document.getElementById('confirmModal').style.display = 'none';
 }
 
 // Example usage
@@ -914,20 +821,4 @@ function customConfirm(inviting) {
 //         console.log("User canceled the action.");
 //     }
 // };
-// document.querySelector('.dropdownToggle').addEventListener('click', function() {
-//     const dropdownContent = this.nextElementSibling; // Get the next sibling (.dropdown-content)
-    
-//     if (dropdownContent.classList.contains('hide')) {
-//         dropdownContent.classList.remove('hide'); // Show the content
-//     } else {
-//         dropdownContent.classList.add('hide'); // Hide the content
-//         document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
-//             // Check which property has finished transitioning
-//             document.querySelector('.dropdown-content').classList.remove('hide');
-            
-//         });
-        
-//     }
-// });
-
 });

@@ -1,0 +1,5 @@
+{
+  "watch": ["views", "public", "server.js"],
+  "ext": "js,pug,css"
+  
+}
