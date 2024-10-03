@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Limit Example</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+            justify-content: center;
+        }
+
+        input {
+            width: 200px;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        .error {
+            color: red;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<input type="text" id="textInput" placeholder="Type here...">
+<p id="counter">0 characters</p>
+<p id="error" class="error"></p>
+
+<script>
+    const textInput = document.getElementById('textInput');
+    const counter = document.getElementById('counter');
+    const error = document.getElementById('error');
+
+    const minChars = 5;
+    const maxChars = 100;
+
+    // Update the character counter and check limits
+    function updateCounter() {
+        const length = textInput.value.length;
+
+        // Update counter display
+        counter.innerText = `${length} characters`;
+
+        // Check for min and max characters
+        if (length < minChars) {
+            error.innerText = `Minimum characters required: ${minChars}`;
+        } else if (length > maxChars) {
+            error.innerText = `Maximum characters allowed: ${maxChars}`;
+            textInput.value = textInput.value.slice(0, maxChars); // Prevent further input
+        } else {
+            error.innerText = ''; // Clear error message
+        }
+
+        console.log(`Character count: ${length}`);
+    }
+
+    // Listen for input changes in the text input
+    textInput.addEventListener('input', updateCounter);
+</script>
+
+</body>
+</html>

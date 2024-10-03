@@ -1,10 +1,9 @@
 body {
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%); */
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
   padding: 0;
   margin: 0;
   color: white
-  
 }
 label {
   display: flex;
@@ -31,7 +30,7 @@ button:hover {
   color: black;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
-#message-container::-webkit-scrollbar, #searchUsers::-webkit-scrollbar, #users::-webkit-scrollbar {
+#message-container::-webkit-scrollbar {
   width: 10px; /* Set the width of the scrollbar */
   
 }
@@ -44,11 +43,12 @@ button:hover {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  height: 95%;
-  overflow-x: hidden;
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
+  align-items: center;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
-#message-container::-webkit-scrollbar, #searchUsers::-webkit-scrollbar, #users::-webkit-scrollbar {
+#message-container::-webkit-scrollbar {
   width: 10px; /* Set the width of the scrollbar */
   
 }
@@ -57,15 +57,20 @@ button:hover {
 }
 #search-input {
   align-self: center;
-  margin: 10px;
-  width: 15vw;
 }
 
 .user {
-    display: flex;
-    align-items: center; /* Center vertically */
-    justify-content: center; /* Center horizontally */
-    margin: 10px 0; /* Add space between user entries */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1px;
+  background-color: hsla(0, 0%, 100%, 0.1);
+  padding: 5px;
+  width: 90%;
+  border-radius: 5px;
+}
+.username {
+  margin-bottom: 3px;
 }
 
 .profile-container {
@@ -92,12 +97,10 @@ button:hover {
     width: 40px; /* Same size as the image */
     height: 40px; /* Same size as the image */
     background: rgb(63,94,251);
-    background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(67,97,110,1) 100%);
+    background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(24,26,138,1) 100%);
     border-radius: 50%; /* Make it a circle */
     font-weight: bold; /* Make initials bold */
     color: white; /* Change color as needed */
-    font-size: 25px;
-    font-weight: bolder;
 }
 
 /* .loading-placeholder {
@@ -127,13 +130,13 @@ button:hover {
 
 
 /* Scrollbar thumb */
-#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #searchUsers::-webkit-scrollbar-thumb {
+#message-container::-webkit-scrollbar-thumb {
   background-color: darkgray; /* Color of the scrollbar thumb */
   
 }
 
 /* Scrollbar track */
-#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #searchUsers::-webkit-scrollbar-track {
+#message-container::-webkit-scrollbar-track {
   background: transparent; /* Background of the scrollbar track */
 }
 
@@ -144,7 +147,7 @@ button:hover {
 }
 
 /* For Internet Explorer and Edge (legacy) */
-#message-container, #users, #searchUsers {
+#message-container {
   -ms-overflow-style: scrollbar; /* Sets the scrollbar to be visible */
 }
 @font-face {
@@ -187,8 +190,8 @@ h1 a {
   z-index: 2;
   position: absolute;  
   top: 0;
-  left: calc(22%);
-  font-weight: bolder; 
+  left: calc(22%); 
+  font-weight: bolder;
 }
 
 .dropdown-container {
@@ -240,10 +243,6 @@ h1 a {
 }
 
 /* Underline styling */
-.dropdownToggle {
-  position: relative; /* Ensure the position is relative for the ::before pseudo-element */
-}
-
 .dropdownToggle::before {
   content: '';
   position: absolute;
@@ -252,12 +251,11 @@ h1 a {
   height: 2px;
   width: 0%; /* Initially no line */
   background-color: #3f5efb; /* Line color */
-  transition: width 0.4s ease; /* Animate width only */
+  transition: width 0.4s ease, left 0.4s ease;
 }
 
 /* Show sliding line when hovering over the dropdown container or toggle */
-.dropdown-container:hover .dropdownToggle::before,
-.dropdownToggle:hover::before {
+.dropdown-container:hover .dropdownToggle::before {
   width: 100%; /* Full width on hover */
 }
 
@@ -266,9 +264,11 @@ h1 a {
   width: 100%; /* Keep the line full width */
 }
 
-/* Remove active state behavior that moves the line */
-
-
+/* Active state for sliding underline */
+.dropdownToggle:active::before {
+  left: 100%; /* Start sliding to the right */
+  width: 0%; /* Collapse the line */
+}
 
 /* Enable scrolling only when necessary */
 /* Scrollbar Styling for Dropdowns */
@@ -316,27 +316,32 @@ h1 a {
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; /* Smooth transition */
 }
 
-/* #friends {
+#friends {
   width: calc(25vw - 1px);
-  
+  /* border-right: solid 1px whitesmoke; */
   opacity: 1;
   visibility: visible;
   transition: opacity 0.5s ease, visibility 0s linear 0s;
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
- } */
- 
+  
+  
+}
 #friends.hidden {
   opacity: 0;
   visibility: hidden;
-  /* transition: opacity 0.5s ease, visibility 0s linear 0s; Ensure visibility is instant when shown */
-  transition: right 0.5s ease, opacity 0.5s ease;
+  transition: opacity 0.5s ease, visibility 0s linear 0.1s; /* Delay visibility change to align with opacity transition */
 }
 #typingIndicator {
   display: none;
   color: green;
 }
-
+#inputAndIcons {
+  display: flex;
+  margin-bottom: 10px;
+  width: 80%;
+  
+}
 @keyframes blinker {
   50% {
     opacity: 0;
@@ -353,13 +358,12 @@ h1 a {
   height: 100%;
   flex-direction: column;
   height: 90vh;
-  width: 50vw;
+  width: calc(50vw - 1px);
   /* border-right: solid 1px #3f5efb;
   border-left: solid 1px #3f5efb;
   box-shadow: 
     -4px 0px 6px 0px rgba(63, 94, 251, 0.5), 
     4px 0px 6px 0px rgba(63, 94, 251, 0.5) inset;  */
-  margin-left: auto;
 
 }
 #message-container {
@@ -375,6 +379,7 @@ h1 a {
   flex-direction: column;
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
+
 }
 #avatarOrInitials {
   margin-top: 50px;
@@ -390,7 +395,7 @@ h1 a {
 .accountContentText {
   margin: 10px;
   
-  font-size: 20px;
+  font-size: clamp(1rem, 0.3vw + 1rem, 2rem);
   display: flex;
   
   justify-content: flex-end;
@@ -415,9 +420,7 @@ h1 a {
   justify-content: center;
   align-items: center;
   background: rgb(63,94,251);
-  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(67,97,110,1) 100%);
-  font-size: 50px;
-  font-weight: bolder;
+  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(24,26,138,1) 100%);
 }
 #avatar {
   width: 80px;
@@ -463,8 +466,6 @@ h1 a {
   min-height: 0; /* Prevents overflow issues */
   padding: 0; /* Optional padding around chat */
   overflow: hidden;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
 }
 #receiver {
   margin-bottom: auto;
@@ -602,11 +603,6 @@ h1 a {
 }
 
 
-#searchUsers.animate {
-  left: 0; /* Move into view */
-  opacity: 1; /* Make visible */
-  visibility: visible; /* Ensure it's visible */
-}
 
 #content {
   width: 100vw;
@@ -619,18 +615,18 @@ h1 a {
 
 
 /* Scrollbar thumb */
-#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #searchUsers::-webkit-scrollbar-thumb {
+#message-container::-webkit-scrollbar-thumb {
   background-color: darkgray; /* Color of the scrollbar thumb */
   
 }
 
 /* Scrollbar track */
-#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #searchUsers::-webkit-scrollbar-track {
+#message-container::-webkit-scrollbar-track {
   background: transparent; /* Background of the scrollbar track */
 }
 
 /* For Firefox */
-#message-container, #users, #searchUsers {
+#message-container {
   scrollbar-width: thin; /* Sets the scrollbar to be thin (default option) */
   scrollbar-color: darkgray transparent; /* Color of the scrollbar thumb and track */
   overflow-y: auto;
@@ -638,7 +634,7 @@ h1 a {
 }
 
 /* For Internet Explorer and Edge (legacy) */
-#message-container, #users, #searchUsers {
+#message-container {
   -ms-overflow-style: scrollbar; /* Sets the scrollbar to be visible */
   flex-wrap: nowrap;
   display: flex;
@@ -669,7 +665,7 @@ h1 a {
   box-shadow: 0 0 5px 7px white;
 }
 
-#chat_account {
+#friends_chat_account {
   display: flex;
   /* height: 90vh; */
   /* background-color: aquamarine; */
@@ -681,13 +677,11 @@ h1 a {
 }
 #inputAndIcons {
   display: flex;
-  
+  margin-bottom: 10px;
   width: 100%;
   justify-content: center;
   /* border-top: solid 1px #3f5efb;
   box-shadow: 0px -4px 6px 0px rgba(63, 94, 251, 0.5); Adjusted shadow */
-  background: rgb(4,13,37);
-  
 }
 
 @keyframes blinker {
@@ -813,69 +807,28 @@ h1 a {
   padding: 10px;
   font-weight: bold;
 }
-#friends {
+#options {
   position: absolute;
-  width: 25vw; /* Take up 25% of the viewport width */
-  left: 0; /* Start fully visible */
-  top: 10vh;
-  height: 90vh;
-  transition: left 0.5s ease; /* Animate horizontal movement */
-  z-index: -10;
-  display: flex;
-  flex-direction: column;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
-}
-#friendsSearchBg {
-  position: absolute;
-  width: 25vw; /* Take up 25% of the viewport width */
-  left: 0; /* Start fully visible */
-  top: 10vh;
-  height: 90vh;
-  
-  z-index: -11;
-  
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
-}
-
-#friends.move-left {
-  left: +25vw; /* Move friends left by 25% of the viewport */
-}
-
-#friends.move-right {
-  left: 0; /* Back to original position (fully visible) */
-}
-
-#searchUsers {
-  position: absolute;
-  transform: translateX(-100%); /* Start off-screen to the left */
-  top: 10vh;
-  width: 25vw;
-  height: 90vh;
-  transition: transform 0.5s ease, opacity 0.5s ease;
-  opacity: 1;
-  visibility: visible;
+  left: -25vw; /* Start completely off-screen */
+  top: +10vh;
+  /* width: 25vw; Set width as 50% of viewport width */
+  height: 90vh; /* Fixed height */
+  /* background-color: #007BFF; Rectangle color */
+  transition: left 0.5s ease, opacity 0.5s ease; /* Animation effect */
+  opacity: 0; /* Start invisible */
+  visibility: hidden; /* Initially hidden */
   z-index: 1;
   display: flex;
   flex-direction: column;
+  background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 
-#searchUsers.move-left {
-  transform: translateX(0); /* Fully in view */
+#options.animate {
+  left: 0; /* Move into view */
+  opacity: 1; /* Make visible */
+  visibility: visible; /* Ensure it's visible */
 }
-
-#searchUsers.move-right {
-  transform: translateX(-100%); /* Move back off-screen */
-}
-
-#searchUsers.hidden {
-  opacity: 0;
-  visibility: hidden;
-}
-
-
 
 #content {
   width: 100vw;
@@ -886,7 +839,7 @@ h1 a {
 }
 
 #mainContent .modal {
-  visibility: hidden; /* Initially hidden */
+  display: none; /* Initially hidden */
   position: absolute; /* Absolute positioning within the parent */
   left: 50%; /* Center horizontally */
   top: 50%; /* Center vertically */
@@ -909,13 +862,11 @@ h1 a {
   background: rgb(63,94,251);
   background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%);
   padding: 20px;
+  /* border-radius: 5px; */
+  text-align: center;
   width: 100%;
-  height: auto; /* Ensure content can grow */
-  max-height: 100%; /* Prevent overflow */
-  overflow-y: auto; /* Allow scrolling if content exceeds */
+  height: 100%;
 }
-
-
 .modal button {
   margin: 10px;
   padding: 8px 16px;
