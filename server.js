@@ -1,4 +1,3 @@
-const browserSync = require('browser-sync');
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -15,7 +14,7 @@ const multer = require('multer');
 const livereload = require('livereload');
 const connectLiveReload = require('connect-livereload');
 const cors = require('cors');
-
+const browserSync = require('browser-sync');
 
 const app = express();
 const server = http.createServer(app);
