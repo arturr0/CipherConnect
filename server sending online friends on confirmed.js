@@ -489,7 +489,7 @@ socket.on('sendMeMessages', (username, receiver) => {
                             if (friend.inviting === updatedUser.id) {
                                 return {
                                     name: friend.invitedName,
-                                    image: friend.invitedProfile,
+                                    profileImage: friend.invitedProfile,
                                     online: friend.invitedOnline
                                 };
                             } else {
@@ -943,11 +943,11 @@ socket.on('sendMeMessages', (username, receiver) => {
                                         CASE 
                                             WHEN f.inviting = ? THEN u2.username
                                             ELSE u1.username
-                                        END AS name,
+                                        END AS friendName,
                                         CASE 
                                             WHEN f.inviting = ? THEN u2.profileImage
                                             ELSE u1.profileImage
-                                        END AS image,
+                                        END AS friendImage,
                                         CASE 
                                             WHEN f.inviting = ? THEN u2.socketId
                                             ELSE u1.socketId
@@ -955,7 +955,7 @@ socket.on('sendMeMessages', (username, receiver) => {
                                         CASE 
                                             WHEN (CASE WHEN f.inviting = ? THEN u2.socketId ELSE u1.socketId END) IS NOT NULL
                                             THEN 1 ELSE 0
-                                        END AS online
+                                        END AS isOnline
                                     FROM friends f
                                     JOIN users u1 ON f.inviting = u1.id
                                     JOIN users u2 ON f.invited = u2.id
@@ -971,12 +971,12 @@ socket.on('sendMeMessages', (username, receiver) => {
 
                             // Send the invited user's updated friends list
                             fetchFriends(invitedId, (invitedFriends) => {
-                                socket.emit('friendsList', invitedFriends);
+                                socket.emit('friendsList', { friends: invitedFriends });
                             });
 
                             // Send the inviting user's updated friends list
                             fetchFriends(invitingId, (invitingFriends) => {
-                                io.to(invitingSocketId).emit('friendsList', invitingFriends);
+                                io.to(invitingSocketId).emit('friendsList', { friends: invitingFriends });
                             });
 
                             // Optionally, confirm the invitation to both parties
@@ -1110,163 +1110,63 @@ socket.on('uploadImage', ({ imageData, fileType }) => {
 
 
 
-// Handle block event
 socket.on('block', (blockedUsername, callback) => {
-    // Find the user who is blocking based on socketId
-    db.get('SELECT id, username FROM users WHERE socketId = ?', [socket.id], (err, blocker) => {
+    // Find the username of the user who is blocking
+    db.get('SELECT username FROM users WHERE socketId = ?', [socket.id], (err, blocker) => {
         if (err || !blocker) {
             console.error('Blocker not found:', err);
             return callback({ success: false, error: 'Blocker not found' });
         }
 
-        const blockerId = blocker.id;
-        const blockerUsername = blocker.username;
-
-        // Find the user being blocked by their username
+        // Find the ID and socketId of the user being blocked
         db.get('SELECT id, socketId FROM users WHERE username = ?', [blockedUsername], (err, blocked) => {
             if (err || !blocked) {
                 console.error('Blocked user not found:', err);
                 return callback({ success: false, error: 'Blocked user not found' });
             }
 
-            const blockedId = blocked.id;
-            const blockedSocketId = blocked.socketId;
-
-            // Insert the block relationship into the blocked table
-            db.run('INSERT INTO blocked (blocker, blocked) VALUES (?, ?)', [blockerId, blockedId], function(err) {
+            // Insert into the blocked table using the username of the blocker
+            db.run('INSERT INTO blocked (blocker, blocked) VALUES ((SELECT id FROM users WHERE username = ?), ?)', [blocker.username, blocked.id], function(err) {
                 if (err) {
                     console.error('Error inserting into blocked table:', err);
                     return callback({ success: false, error: 'Database error' });
                 }
 
-                // Remove any existing friendship between the users
-                db.run('DELETE FROM friends WHERE (inviting = ? AND invited = ?) OR (inviting = ? AND invited = ?)', 
-                    [blockerId, blockedId, blockedId, blockerId], (err) => {
+                // Remove the friendship if it exists
+                db.run('DELETE FROM friends WHERE (inviting = (SELECT id FROM users WHERE username = ?) AND invited = ?) OR (inviting = ? AND invited = (SELECT id FROM users WHERE username = ?))', 
+                    [blocker.username, blocked.id, blocked.id, blocker.username], (err) => {
                     if (err) {
                         console.error('Error removing friendship:', err);
                         return callback({ success: false, error: 'Database error' });
                     }
-
-                    console.log(`Friendship between ${blockerUsername} and ${blockedUsername} removed due to block.`);
-
-                    // Fetch updated friends lists and send them to both users
-                    sendUpdatedFriendsList(blockerId);
-                    sendUpdatedFriendsList(blockedId);
-
-                    // Check if the blocked user has an active socket connection and notify them
-                    if (blockedSocketId) {
-                        io.to(blockedSocketId).emit('blockedNotification', blockerUsername);
-                        console.log(`${blockedUsername} has been notified of the block.`);
-                    } else {
-                        console.log(`Blocked user ${blockedUsername} is not currently online.`);
-                    }
-
-                    // Notify the client (blocker) about the successful block
-                    callback({ success: true, message: `You have blocked ${blockedUsername}` });
                 });
+
+                // Check if the blocked user has an active socket connection
+                if (blocked.socketId) {
+                    // Send a message to the blocked user if they are online
+                    io.to(blocked.socketId).emit('blockedNotification', blocker.username);
+                } else {
+                    console.log(`Blocked user ${blockedUsername} is not currently online.`);
+                }
+
+                // Notify the client about the successful block and invoke the callback
+                callback({ success: true, message: `You have blocked ${blockedUsername}` });
             });
         });
     });
 });
 
-// Helper function to fetch the updated friends list and send it to the user
-const sendUpdatedFriendsList = (userId) => {
-    const query = `
-        SELECT 
-            u.id AS id,
-            u.username AS name,
-            u.profileImage AS image,
-            u.socketId AS socketId,
-            CASE WHEN u.socketId IS NOT NULL THEN 1 ELSE 0 END AS online
-        FROM friends f
-        JOIN users u ON (f.inviting = u.id OR f.invited = u.id)
-        WHERE (f.inviting = ? OR f.invited = ?) AND f.accepted = 1
-        AND u.id != ?
-    `;
 
-    db.all(query, [userId, userId, userId], (err, friends) => {
-        if (err) {
-            console.error('Error fetching friends list:', err);
-            return;
-        }
-
-        // Fetch the user's socket ID to send them the updated friends list
-        db.get('SELECT socketId FROM users WHERE id = ?', [userId], (err, user) => {
-            if (err || !user || !user.socketId) {
-                console.error('User not found or not online:', err);
-                return;
-            }
-
-            // Send the updated friends list to the client
-            io.to(user.socketId).emit('friendsList', friends
-            );
-        });
-    });
-};
-
-
-
-// Handling 'disconnect' event
 socket.on('disconnect', () => {
-    // First, find the user that disconnected based on the socketId
-    db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, disconnectedUser) => {
-        if (err || !disconnectedUser) {
-            console.error('Disconnected user not found:', err);
-            return;
+    // Update both socketId and receiver to NULL when a user disconnects
+    db.run('UPDATE users SET socketId = NULL, receiver = NULL WHERE socketId = ?', [socket.id], (err) => {
+        if (err) {
+            console.error('Error clearing socket ID and receiver:', err);
+        } else {
+            console.log(`Socket ID and receiver cleared for socket: ${socket.id}`);
         }
-
-        const disconnectedUserId = disconnectedUser.id;
-
-        // Clear the socketId and receiver fields
-        db.run('UPDATE users SET socketId = NULL, receiver = NULL WHERE id = ?', [disconnectedUserId], (err) => {
-            if (err) {
-                console.error('Error clearing socketId and receiver:', err);
-            } else {
-                console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
-
-                // Fetch the friends of the disconnected user
-                fetchFriends(disconnectedUserId, (friends) => {
-                    // Notify each friend about their updated friend list
-                    friends.forEach(friend => {
-                        if (friend.socketId) {
-                            // Fetch the updated list of the friend's friends
-                            fetchFriends(friend.id, (updatedFriendsList) => {
-                                // Send the updated friend list to the friend
-                                io.to(friend.socketId).emit('friendsList', updatedFriendsList);
-                            });
-                        }
-                    });
-                });
-            }
-        });
     });
 });
-
-// Helper function to fetch friends with username, profile image, and online status
-const fetchFriends = (userId, callback) => {
-    const query = `
-        SELECT 
-            u.id AS id,
-            u.username AS name,
-            u.profileImage AS image,
-            u.socketId AS socketId,
-            CASE WHEN u.socketId IS NOT NULL THEN 1 ELSE 0 END AS online
-        FROM friends f
-        JOIN users u ON (f.inviting = u.id OR f.invited = u.id)
-        WHERE (f.inviting = ? OR f.invited = ?) AND u.id != ? AND f.accepted = 1
-    `;
-
-    db.all(query, [userId, userId, userId], (err, friends) => {
-        if (err) {
-            console.error('Error fetching friends:', err);
-            callback([]);
-        } else {
-            callback(friends);
-        }
-    });
-};
-
-
 
     
     function findBlocked(searchUser, socketId) {
