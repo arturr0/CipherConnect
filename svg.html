@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="svgContainer">
+    <!-- <svg width="100" height="100">
+        <circle id="myCircle" cx="50" cy="50" r="40"></circle>
+      </svg> -->
+    </div>  
+      <button onclick="createSVG()">Change Color</button>
+      
+      <script>
+        function createSVG() {
+    // Create an SVG namespace
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    // Create the <svg> element
+    const svgElement = document.createElementNS(svgNS, "svg");
+    svgElement.setAttribute("width", "100");
+    svgElement.setAttribute("height", "100");
+
+    // Create the <circle> element
+    const circle = document.createElementNS(svgNS, "circle");
+    circle.setAttribute("cx", "50");
+    circle.setAttribute("cy", "50");
+    circle.setAttribute("r", "40");
+    circle.setAttribute("fill", "red");
+
+    // Append the circle to the SVG
+    svgElement.appendChild(circle);
+
+    // Append the SVG to the parent container (e.g., div#svgContainer)
+    document.getElementById("svgContainer").appendChild(svgElement);
+  }
+
+      </script>
+      
+      
+      
+</body>
+</html>
