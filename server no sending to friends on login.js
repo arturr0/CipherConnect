@@ -149,11 +149,9 @@ db.serialize(() => {
         recId INTEGER,
         message TEXT,
         read INTEGER NOT NULL,
-        sendTime TEXT NOT NULL,
         FOREIGN KEY (senderId) REFERENCES users(id),
         FOREIGN KEY (recId) REFERENCES users(id)
     )`);
-
 
     db.run(`CREATE TABLE IF NOT EXISTS blocked (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,7 +248,7 @@ io.on('connection', (socket) => {
     //console.log('A user connected with socket ID:', socket.id);
     
     // Socket listener for chat messages
-    socket.on('chatMessage', ({ username, messageSent, receiver, sendTime }) => {
+    socket.on('chatMessage', ({ username, messageSent, receiver }) => {
         // Find sender's ID using socketId
         db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, sender) => {
             if (err || !sender) {
@@ -294,41 +292,34 @@ io.on('connection', (socket) => {
                         console.log('Encrypted message being sent:', encryptedMessage);
     
                         // Insert encrypted message into database
-                        db.run('INSERT INTO messages (senderId, recId, message, read, sendTime) VALUES (?, ?, ?, ?, ?)', 
-                            [sender.id, rec.id, encryptedMessage, 0, sendTime], 
-                            function (err) {
+                        db.run('INSERT INTO messages (senderId, recId, message, read) VALUES (?, ?, ?, ?)', 
+                            [sender.id, rec.id, encryptedMessage, 0], (err) => {
                                 if (err) {
                                     console.error('Error saving message:', err);
                                     return;
                                 }
-
-                                // Send message with sendTime to the receiver
-                                io.to(rec.socketId).emit('message', {
-                                    user: username,          // Sender's username
-                                    message: messageSent,     // Original (unencrypted) message to display
-                                    date: sendTime            // Include the stored sendTime
-                                });
-
-                                // Check if the receiver's `receiver` matches the sender's ID
+    
+                                // Send encrypted message to receiver
+                                io.to(rec.socketId).emit('message', { user: username, message: messageSent }); // Send original message
+    
+                                // Check if the receiver's `receiver` in the users table matches the sender's ID
                                 if (rec.receiver === sender.id) {
                                     // Update the message 'read' status
                                     db.run('UPDATE messages SET read = 1 WHERE recId = ? AND senderId = ?', 
-                                        [rec.id, sender.id], 
-                                        function (err) {
+                                        [rec.id, sender.id], (err) => {
                                             if (err) {
                                                 console.error('Error updating message read status:', err);
                                             } else {
                                                 console.log(`Messages marked as read for receiver: ${receiver}`);
                                             }
                                         });
-                                    }
                                 }
-                            );
-                        }
-                    );
-                });
+                            });
+                    }
+                );
             });
         });
+    });
     
     
 
@@ -356,11 +347,10 @@ socket.on('sendMeMessages', (username, receiver) => {
                 }
                 console.log(`Receiver updated successfully for user ${username}`);
 
-                // Fetch messages between the sender and receiver, now including sendTime
+                // Fetch messages between the sender and receiver
                 db.all(`
                     SELECT messages.message, 
                            messages.read, 
-                           messages.sendTime, 
                            sender.username AS senderUsername, 
                            receiver.username AS receiverUsername 
                     FROM messages 
@@ -375,29 +365,28 @@ socket.on('sendMeMessages', (username, receiver) => {
                             return;
                         }
 
-                        // Decrypt each message and include sendTime
+                        // Decrypt each message
                         const decryptedMessages = messages.map(msg => {
                             try {
                                 return {
-                                    message: decrypt(msg.message),  // Decrypt the message text
+                                    message: decrypt(msg.message), // Decrypt the message text
                                     senderUsername: msg.senderUsername,
                                     receiverUsername: msg.receiverUsername,
-                                    read: msg.read,
-                                    time: msg.sendTime  // Include the sendTime field
+                                    read: msg.read
                                 };
                             } catch (decryptionError) {
                                 console.error('Error decrypting message:', decryptionError);
-                                return null;  // Skip the message if it fails to decrypt
+                                return null; // Skip the message if it fails to decrypt
                             }
-                        }).filter(msg => msg !== null);  // Filter out null (failed decryption)
+                        }).filter(msg => msg !== null); // Filter out null (failed decryption)
 
                         // Log decrypted messages to verify they are correctly decrypted
                         console.log('Decrypted messages to send:', decryptedMessages);
 
                         // Send decrypted messages and the receiver's profile image separately
                         socket.emit('messagesResponse', {
-                            messages: decryptedMessages,  // Array of decrypted messages
-                            profileImage: receiverResult.profileImage  // The receiver's profile image
+                            messages: decryptedMessages, // Array of decrypted messages
+                            profileImage: receiverResult.profileImage // The receiver's profile image
                         });
 
                         // Now mark messages as read if the receiver (user) has seen them
@@ -405,8 +394,8 @@ socket.on('sendMeMessages', (username, receiver) => {
                             UPDATE messages 
                             SET read = 1 
                             WHERE recId = ? AND senderId = ? 
-                              AND read = 0`,  // Only update unread messages
-                            [sender.id, receiverResult.id],  // recId is the sender (user), senderId is the receiver
+                              AND read = 0`, // Only update unread messages
+                            [sender.id, receiverResult.id], // recId is the sender (user), senderId is the receiver
                             (err) => {
                                 if (err) {
                                     console.error('Error marking messages as read:', err);
@@ -421,7 +410,6 @@ socket.on('sendMeMessages', (username, receiver) => {
         });
     });
 });
-
 
 
 
@@ -461,22 +449,6 @@ socket.on('sendMeMessages', (username, receiver) => {
                     console.error('Error updating socket ID:', err);
                     return;
                 }
-                
-                // Emit the friends list to the logged-in user
-                fetchFriends(user.id, (friends) => {
-                    io.to(socket.id).emit('friendsList', friends); // Send list to logged-in user
-    
-                    // Notify each friend about their updated friend list
-                    friends.forEach(friend => {
-                        if (friend.socketId) {
-                            // Fetch the updated list of the friend's friends
-                            fetchFriends(friend.id, (updatedFriendsList) => {
-                                // Send the updated friend list to the friend
-                                io.to(friend.socketId).emit('friendsList', updatedFriendsList);
-                            });
-                        }
-                    });
-                });
     
                 // Fetch the user again after socketId is updated
                 db.get('SELECT id, profileImage FROM users WHERE socketId = ?', [socket.id], (err, updatedUser) => {
@@ -491,27 +463,74 @@ socket.on('sendMeMessages', (username, receiver) => {
                         profileImage: updatedUser.profileImage || null
                     });
     
-                    // Fetch pending invitations
+                    // Query the friends table to get friends with accepted = 1
                     db.all(`
-                        SELECT u.username, f.inviting 
+                        SELECT 
+                            f.inviting, f.invited, u1.username AS invitingName, u2.username AS invitedName, 
+                            u1.profileImage AS invitingProfile, u2.profileImage AS invitedProfile,
+                            CASE
+                                WHEN u1.socketId IS NULL THEN false ELSE true
+                            END AS invitingOnline,
+                            CASE
+                                WHEN u2.socketId IS NULL THEN false ELSE true
+                            END AS invitedOnline
                         FROM friends f
-                        JOIN users u ON f.inviting = u.id
-                        WHERE f.invited = ? AND f.accepted = 0`, [updatedUser.id], (err, rows) => {
+                        LEFT JOIN users u1 ON f.inviting = u1.id
+                        LEFT JOIN users u2 ON f.invited = u2.id
+                        WHERE (f.inviting = ? OR f.invited = ?) AND f.accepted = 1
+                    `, [updatedUser.id, updatedUser.id], (err, friends) => {
+                        if (err) {
+                            console.error('Error fetching friends:', err);
+                            return;
+                        }
+    
+                        // Send the list of friends to the user
+                        io.to(socket.id).emit('friendsList', friends.map(friend => {
+                            if (friend.inviting === updatedUser.id) {
+                                return {
+                                    name: friend.invitedName,
+                                    image: friend.invitedProfile,
+                                    online: friend.invitedOnline
+                                };
+                            } else {
+                                return {
+                                    name: friend.invitingName,
+                                    profileImage: friend.invitingProfile,
+                                    online: friend.invitingOnline
+                                };
+                            }
+                        }));
+                    });
+    
+                    // Query the friends table for any pending invitations (accepted = 0)
+                    db.all('SELECT inviting FROM friends WHERE invited = ? AND accepted = 0', [updatedUser.id], (err, rows) => {
                         if (err) {
                             console.error('Error fetching invitations:', err);
                             return;
                         }
     
-                        // Process and send pending invitations
-                        const pendingInvitations = rows.map(row => ({
-                            username: row.username,
-                            invitingId: row.inviting
-                        }));
+                        // Send pending invitations to the user
+                        if (rows.length > 0) {
+                            rows.forEach(row => {
+                                db.get('SELECT username, profileImage FROM users WHERE id = ?', [row.inviting], (err, invitingUser) => {
+                                    if (err) {
+                                        console.error('Error fetching inviting user:', err);
+                                        return;
+                                    }
     
-                        io.to(socket.id).emit('pendingInvitations', pendingInvitations);
+                                    // Emit the invitation to the invited user
+                                    io.to(socket.id).emit('send invitation', {
+                                        from: invitingUser.username,
+                                        profileImage: invitingUser.profileImage,
+                                        message: `You have received an invitation from ${invitingUser.username}.`,
+                                        id: row.inviting // Send the inviting user's ID
+                                    });
+                                });
+                            });
+                        }
                     });
-    
-                    // Count unread messages
+                    
+                    // Count unread messages for the user (as per your original code)
                     db.all(`
                         SELECT senderId, COUNT(*) AS unreadCount 
                         FROM messages 
@@ -546,8 +565,6 @@ socket.on('sendMeMessages', (username, receiver) => {
             });
         });
     });
-    
-    
     
     
     
