@@ -406,11 +406,9 @@ socket.on('sendMeMessages', (username, receiver) => {
 
                 // Fetch messages between the sender and receiver, now including sendTime
                 db.all(`
-                    SELECT messages.id, 
-                           messages.message, 
+                    SELECT messages.message, 
                            messages.read, 
                            messages.sendTime, 
-                           messages.toDelete,   /* Fetch toDelete status */
                            sender.username AS senderUsername, 
                            receiver.username AS receiverUsername 
                     FROM messages 
@@ -429,7 +427,6 @@ socket.on('sendMeMessages', (username, receiver) => {
                         const decryptedMessages = messages.map(msg => {
                             try {
                                 return {
-                                    id: msg.id,  // Include the message ID for deletion later
                                     message: decrypt(msg.message),  // Decrypt the message text
                                     senderUsername: msg.senderUsername,
                                     receiverUsername: msg.receiverUsername,
@@ -466,25 +463,12 @@ socket.on('sendMeMessages', (username, receiver) => {
                                 }
                             }
                         );
-
-                        // Check for and delete messages that have 'toDelete' set to 1
-                        const messagesToDelete = messages.filter(msg => msg.toDelete === 1).map(msg => msg.id);
-                        if (messagesToDelete.length > 0) {
-                            db.run(`DELETE FROM messages WHERE id IN (${messagesToDelete.join(',')})`, (err) => {
-                                if (err) {
-                                    console.error('Error deleting messages:', err);
-                                } else {
-                                    console.log('Messages with toDelete = 1 have been deleted:', messagesToDelete);
-                                }
-                            });
-                        }
                     }
                 );
             });
         });
     });
 });
-
 
 
 

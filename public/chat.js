@@ -13,9 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const friendsContainer = document.getElementById('friendsContainer');
     let messageValue = 0;
     let receiver = '';
+    let storeMessage = true;
     const cryptoDiv = document.getElementById("crypto");
     const originalWidth = cryptoDiv.offsetWidth;
     document.getElementById("crypto").addEventListener('click', () => {
+        storeMessage = !storeMessage;
         cryptoDiv.style.width = `${originalWidth}px`
         if(document.getElementById("crypto").textContent.includes("No Storing Messages")) {
             
@@ -63,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     console.log(username);
                     
-                    socket.emit('chatMessage', { username, messageSent, receiver, sendTime });
+                    socket.emit('chatMessage', { username, messageSent, receiver, sendTime, storeMessage });
                     document.getElementById("message").value = "";
                     document.getElementById("message").style.height = '80px';
                     console.log(messageSent);
