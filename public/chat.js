@@ -1,4 +1,4 @@
-const socket = io.connect('http://localhost:3004');
+const socket = io.connect('http://localhost:3000');
 const baseUrl = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
@@ -10,11 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupCounter = document.getElementById('groupCounter');
     const unreadMessages = document.createElement('div');
     const receiverElement = document.getElementById('receiverName');
+    const friendsContainer = document.getElementById('friendsContainer');
     let messageValue = 0;
     let receiver = '';
+    let storeMessage = true;
     const cryptoDiv = document.getElementById("crypto");
     const originalWidth = cryptoDiv.offsetWidth;
     document.getElementById("crypto").addEventListener('click', () => {
+        storeMessage = !storeMessage;
         cryptoDiv.style.width = `${originalWidth}px`
         if(document.getElementById("crypto").textContent.includes("No Storing Messages")) {
             
@@ -41,11 +44,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     //const chat = document.getElementById("chat");
                     //const receiver = 'art2';
                     console.log("my mess");
-                    chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${inputValString}</div>`);
+                    const sendTime = new Date();
+                    const hours = new Date().getHours();
+                    const minutes = new Date().getMinutes();
+                    
+                    const sendDiv = document.createElement('div');
+                    sendDiv.classList.add('bubble', 'left');
+                    sendDiv.style.wordBreak = 'break-word';
+                    sendDiv.textContent = inputValString;  // Add the message text
+                    const timeAndIcon = document.createElement('div');
+                    timeAndIcon.classList.add('timeAndIcon');
+                    timeAndIcon.style.display = 'flex';
+                    timeAndIcon.style.marginLeft = 'auto';
+                    // Create a paragraph element for the date
+                    const dateParagraph = document.createElement('p');
+                    dateParagraph.textContent = `${hours < 10 ? '0' : ''}${hours}:${minutes < 10 ? '0' : ''}${minutes}`;  // Format and add the date
+                    dateParagraph.style.marginBottom = '0';
+                    
+                    dateParagraph.style.textAlign = 'right';
+                    
+                    // Append the date paragraph to the message div
+                    if(!storeMessage) {
+                        const cryptoIcon = document.createElement('i');
+                        cryptoIcon.classList.add('icon-user-secret');
+                        cryptoIcon.style.marginRight = '3px';
+                        cryptoIcon.style.marginTop = 'auto';
+                        timeAndIcon.appendChild(cryptoIcon);    
+                    }
+                    timeAndIcon.appendChild(dateParagraph);
+                    sendDiv.appendChild(timeAndIcon);
+                    chat.appendChild(sendDiv);
                     adjustMarginForScrollbar();
                     
                     console.log(username);
-                    socket.emit('chatMessage', { username, messageSent, receiver });
+                    
+                    socket.emit('chatMessage', { username, messageSent, receiver, sendTime, storeMessage });
                     document.getElementById("message").value = "";
                     document.getElementById("message").style.height = '80px';
                     console.log(messageSent);
@@ -98,8 +131,225 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(data);
     });
     
+    socket.on('pendingInvitations', (pendingInvitations) => {
+        let newMessageCntr = 0;
+        pendingInvitations.forEach(newMessage => {
+            const invitation = document.createElement('div');
+            invitation.classList.add('invitation');
+            
+            invitation.setAttribute('data-username', newMessage.username); // Set data-username for this user
+            invitation.textContent = `${newMessage.username}`; // Display initial unread count
+
+            // Append to the messages content
+            document.getElementById("invitationContent").appendChild(invitation);
+            let invitaionValue = parseInt(invCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
+            invitaionValue++;
+            console.log(invitaionValue);
+            invCounter.setAttribute('value', invitaionValue);
+            invCounter.textContent = invitaionValue;
+            document.getElementById("invitationContent").appendChild(invitation);
+              
+        });
+        
+    
+    });
     socket.on('friendsList', (data) => {
         console.log(data);
+        // Clear previous user list
+        friendsContainer.innerHTML = ''; // Clear the previous list
+        
+        // Show loading icon when starting to append users
+        // loadingIcon.classList.remove('display');
+        // loadingIcon.classList.add('animate-spin');
+        //document.getElementById("users").appendChild(loadingIcon);
+    
+        const fragment = document.createDocumentFragment();
+    
+        // Loop over the found users
+        data.forEach((friend) => {
+            const userDiv = document.createElement('div');
+            userDiv.classList.add('user');
+    
+            const profileContainer = document.createElement('div');
+            profileContainer.classList.add('profile-container');
+    
+            // Create initials element but keep it hidden initially
+            const initials = document.createElement('div');
+            initials.classList.add('initials');
+            initials.textContent = friend.name.charAt(0).toUpperCase();
+            initials.style.visibility = 'hidden';  // Keep hidden initially
+            profileContainer.appendChild(initials);
+    
+            userDiv.appendChild(profileContainer);
+    
+            const userInfoDiv = document.createElement('div');
+            userInfoDiv.classList.add('user-info');
+            const usernameText = document.createElement('div');
+            usernameText.classList.add('username');
+            usernameText.textContent = friend.name;
+            userInfoDiv.appendChild(usernameText);
+    
+            
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.classList.add('buttons');
+            // Create send message button
+            const svgNS = "http://www.w3.org/2000/svg";
+
+    // Create the <svg> element
+            const svgElement = document.createElementNS(svgNS, "svg");
+            svgElement.setAttribute("width", "20");
+            svgElement.setAttribute("height", "20");
+
+            // Create the <circle> element
+            const circle = document.createElementNS(svgNS, "circle");
+            circle.setAttribute("cx", "10");
+            circle.setAttribute("cy", "10");
+            circle.setAttribute("r", "10");
+            if(friend.online == 1) circle.setAttribute("fill", "green");
+            else circle.setAttribute("fill", "red");
+            // Append the circle to the SVG
+            svgElement.appendChild(circle);
+
+            // Append the SVG to the parent container (e.g., div#svgContainer)
+            buttonsDiv.appendChild(svgElement);
+            const sendButton = document.createElement('button');
+            sendButton.classList.add('send');
+            sendButton.value = friend.name;
+            const sendIcon = document.createElement('i');
+            sendIcon.classList.add('icon-comment');
+            sendButton.appendChild(sendIcon);
+            buttonsDiv.appendChild(sendButton);
+    
+            // Create block button
+            const blockButton = document.createElement('button');
+            blockButton.classList.add('block');
+            blockButton.value = friend.name;
+            const blockIcon = document.createElement('i');
+            blockIcon.classList.add('icon-block-1');
+            blockButton.appendChild(blockIcon);
+            buttonsDiv.appendChild(blockButton);
+    
+            // Append buttons to userInfoDiv
+            userInfoDiv.appendChild(buttonsDiv);
+    
+            // Append userInfoDiv to userDiv
+            userDiv.appendChild(userInfoDiv);
+            userDiv.appendChild(userInfoDiv);
+            fragment.appendChild(userDiv);
+            //userDiv.appendChild(sendButton);  // Append send button
+        
+            sendButton.addEventListener('click', async () => {
+                receiver = sendButton.value;
+    
+                // Emit findUsers without awaiting the response
+                //socket.emit('findUsers', searchUser); // This might be adjusted based on your logic
+    
+                // Assume that the server will respond with found users
+                
+                    
+                    
+                        receiverElement.textContent = receiver;
+    
+                        // Clear existing content in #receiverAvatar
+                        receiverAvatar.innerHTML = ''; 
+                        const profileContainer = userDiv.querySelector('.profile-container');
+    
+                        // Check for the presence of an img element
+                        const img = profileContainer.querySelector('img.profile-image');
+                        const initialsElement = profileContainer.querySelector('.initials');
+    
+                        // Append the image or initials based on availability
+                        if (img) {
+                            const clonedImg = img.cloneNode();
+                            clonedImg.classList.remove('profile-image');
+                            clonedImg.id = 'receiverAvatar';
+                            receiverAvatar.appendChild(clonedImg);
+                        } else if (initialsElement) {
+                            const clonedInitials = initialsElement.cloneNode(true);
+                            clonedInitials.classList.remove('initials');
+                            clonedInitials.id = 'receiverInitials';
+                            receiverAvatar.appendChild(clonedInitials);
+                        }
+    
+                        socket.emit('sendMeMessages', username, receiver);
+                    
+                
+            });
+            
+            
+                // Select all elements with the class 'send'
+    const sendButtons = document.querySelectorAll('.send');
+    
+                
+                blockButton.addEventListener('click', () => {
+                    blockButton.disabled = true;
+                    console.log("click");
+                    const blockedUser = blockButton.value;
+                    if (receiver == blockedUser) {
+                        receiver = '';
+                        receiverAvatar.innerHTML = '';
+                        receiverElement.textContent = '';
+                        chat.innerHTML = '';
+                    }
+                    socket.emit('block', blockedUser, (response) => {
+                        if (response.success) {
+                            socket.emit('findUsers', searchUser);
+                            console.log(response.message);
+                        } else {
+                            console.error('Failed to block user:', response.error);
+                        }
+                    });
+                });
+                
+            // Now load the image asynchronously
+            // if (friend.image) {
+            //     console.log('img out');
+            //     loadImageAsync(friend.image)
+            //         .then((userImage) => {
+            //             console.log(userImage);
+            //             userImage.alt = `${user.username}'s profile image`;
+            //             userImage.classList.add('profile-image');
+            //             initials.style.display = 'none';  // Keep initials hidden if the image loads
+            //             profileContainer.appendChild(userImage);
+            //             console.log(profileContainer);
+            //         })
+            //         .catch((error) => {
+            //             //console.log(`Failed to load image for user: ${user.username}`, error.message);
+            //             initials.style.visibility = 'visible';  // Show initials if image fails to load
+            //         });
+            // } else {
+            //     initials.style.visibility = 'visible';  // Show initials if there's no image
+            // }
+            if (friend.image) {
+    loadImageAsync(friend.image)
+        .then((userImage) => {
+            console.log('Image loaded:', userImage);
+
+            userImage.alt = `${friend.name}'s profile image`;
+            userImage.classList.add('profile-image');
+            
+            initials.style.display = 'none';  // Hide initials when the image loads
+
+            // Check if the image is already appended
+            if (!profileContainer.querySelector('img.profile-image')) {
+                console.log('Appending image to profileContainer');
+                profileContainer.appendChild(userImage);
+            } else {
+                console.log('Image already exists in profileContainer');
+            }
+            
+        })
+        .catch((error) => {
+            console.error(`Failed to load image for user: ${friend.name}`, error.message);
+            initials.style.visibility = 'visible';  // Show initials if image fails to load
+        });
+} else {
+    initials.style.visibility = 'visible';  // Show initials if there's no image
+}
+
+        });
+    
+        friendsContainer.appendChild(fragment);
     });
     socket.on('unread message counts', (unreadCounts) => {
         let newMessageCntr = 0;
@@ -146,6 +396,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     socket.on('blockedNotification', (data) => {
         console.log(data);
+        if (receiver == data) {
+            receiver = '';
+            receiverAvatar.innerHTML = '';
+            receiverElement.textContent = '';
+            chat.innerHTML = '';
+        }
         socket.emit('findUsers', searchUser);
     });
     socket.on('user info', ({ id, profileImage }) => {
@@ -239,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     const usersDiv = document.getElementById('users');
-    let searchUser = 'p';
+    let searchUser = '';
 
     searchInput.addEventListener('input', () => {
         searchUser = searchInput.value.trim();
@@ -257,7 +513,7 @@ function loadImageAsync(src, timeout = 500) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         let timedOut = false;
-
+        console.log('img')
         // Reject after timeout to prevent infinite waiting for slow-loading images
         const timer = setTimeout(() => {
             timedOut = true;
@@ -412,6 +668,12 @@ const sendButtons = document.querySelectorAll('.send');
             blockButton.addEventListener('click', () => {
                 blockButton.disabled = true; 
                 const blockedUser = blockButton.value;
+                if (receiver == blockedUser) {
+                    receiver = '';
+                    receiverAvatar.innerHTML = '';
+                    receiverElement.textContent = '';
+                    chat.innerHTML = '';
+                }
                 socket.emit('block', blockedUser, (response) => {
                     if (response.success) {
                         socket.emit('findUsers', searchUser);
@@ -489,7 +751,7 @@ socket.on('message', (data) => {
 
     // Handle message from the receiver
     if (data.user === receiver) {
-        handleIncomingMessage(data.message);
+        handleIncomingMessage(data);
     } else {
         handleOtherMessage(data.user);
     }
@@ -497,11 +759,70 @@ socket.on('message', (data) => {
 
 function handleIncomingMessage(message) {
     adjustMarginForScrollbar();
-    const messRec = String(message);
+
+    // Create a div element for the message bubble
+    const recDiv = document.createElement('div');
+    recDiv.classList.add('bubble', 'right');
+    recDiv.style.wordBreak = 'break-word';
+    recDiv.textContent = message.message;  // Add the message text
+    const timeAndIcon = document.createElement('div');
+    timeAndIcon.classList.add('timeAndIcon');
+    timeAndIcon.style.display = 'flex';
+    timeAndIcon.style.marginRight = 'auto';
+    // Create a paragraph element for the date
+    const dateParagraph = document.createElement('p');
+    dateParagraph.textContent = formatDateComparison(message.date);  // Format and add the date
+    dateParagraph.style.marginBottom = '0';
+    // Append the date paragraph to the message div
+    timeAndIcon.appendChild(dateParagraph);
+    if(!message.store) {
+        const cryptoIcon = document.createElement('i');
+        cryptoIcon.classList.add('icon-user-secret');
+        
+        cryptoIcon.style.marginTop = 'auto';
+        cryptoIcon.style.marginLeft = '3px';
+        timeAndIcon.appendChild(cryptoIcon);    
+    }
     
-    chat.innerHTML += `<div class="bubble right" style="word-break: break-word">${messRec}</div>`;
+    
+    recDiv.appendChild(timeAndIcon);
+
+    // Append the message div to the chat container
+    chat.appendChild(recDiv);
+
+    // Scroll to the bottom of the chat
     jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
 }
+
+function formatDateComparison(targetDate) {
+    const now = new Date();
+    targetDate = new Date(targetDate);  // Convert the string to a Date object
+
+    // Extract day, month, and year from both dates
+    const nowDay = now.getDate();
+    const nowMonth = now.getMonth();
+    const nowYear = now.getFullYear();
+    
+    const targetDay = targetDate.getDate();
+    const targetMonth = targetDate.getMonth();
+    const targetYear = targetDate.getFullYear();
+    
+    // Compare day, month, and year
+    if (nowDay === targetDay && nowMonth === targetMonth && nowYear === targetYear) {
+        // If same, return hours and minutes
+        const hours = targetDate.getHours();
+        const minutes = targetDate.getMinutes();
+        return `${hours < 10 ? '0' : ''}${hours}:${minutes < 10 ? '0' : ''}${minutes}`; // Add leading zero to minutes if needed
+    } else {
+        // If different, return full date in "year-month-day" format
+        return `${targetYear}.${(targetMonth + 1).toString().padStart(2, '0')}.${targetDay.toString().padStart(2, '0')}`;
+    }
+}
+
+
+// Example usage
+//const targetDate = new Date('2024-10-06T09:40:00'); // Replace with your target date
+//console.log(formatDateComparison(targetDate));
 
 // Main function for handling new messages
 function handleOtherMessage(user) {
@@ -830,12 +1151,76 @@ socket.on('messagesResponse', (decryptedMessages) => {
     chat.innerHTML = '';
     decryptedMessages.messages.forEach(message => {
         if (message.senderUsername == username) {
-            chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${message.message}</div>`);
+            // chat.innerHTML += (`<div class="bubble left" style="word-break: break-word">${message.message}</div>`);
+            // adjustMarginForScrollbar();
+            // jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
+            const sendDiv = document.createElement('div');
+            sendDiv.classList.add('bubble', 'left');
+            sendDiv.style.wordBreak = 'break-word';
+            sendDiv.textContent = message.message;  // Add the message text
+            const timeAndIcon = document.createElement('div');
+            timeAndIcon.classList.add('timeAndIcon');
+            timeAndIcon.style.display = 'flex';
+            timeAndIcon.style.marginLeft = 'auto';
+            // Create a paragraph element for the date
+            const dateParagraph = document.createElement('p');
+            dateParagraph.textContent = `${formatDateComparison(message.time)}`;
+            dateParagraph.style.marginBottom = '0';
+            dateParagraph.style.textAlign = 'right';
+            if(message.toDelete == 1) {
+                const cryptoIcon = document.createElement('i');
+                cryptoIcon.classList.add('icon-user-secret');
+                cryptoIcon.style.marginRight = '3px';
+                cryptoIcon.style.marginTop = 'auto';
+                timeAndIcon.appendChild(cryptoIcon);    
+            }
+            timeAndIcon.appendChild(dateParagraph);
+            sendDiv.appendChild(timeAndIcon);
+            // Append the date paragraph to the message div
+            //sendDiv.appendChild(dateParagraph);
+            chat.appendChild(sendDiv);
+            
+            
+            
+            
             adjustMarginForScrollbar();
             jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
         }
         else {
-            chat.innerHTML += (`<div class="bubble right" style="word-break: break-word">${message.message}</div>`);
+            // chat.innerHTML += (`<div class="bubble right" style="word-break: break-word">${message.message}</div>`);
+            // jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
+            adjustMarginForScrollbar();
+            const timeAndIcon = document.createElement('div');
+            timeAndIcon.classList.add('timeAndIcon');
+            timeAndIcon.style.display = 'flex';
+            timeAndIcon.style.marginRight = 'auto';
+            // Create a div element for the message bubble
+            const recDiv = document.createElement('div');
+            recDiv.classList.add('bubble', 'right');
+            recDiv.style.wordBreak = 'break-word';
+            recDiv.textContent = message.message;  // Add the message text
+
+            // Create a paragraph element for the date
+            const dateParagraph = document.createElement('p');
+            dateParagraph.textContent = formatDateComparison(message.time);  // Format and add the date
+            dateParagraph.style.marginBottom = '0';
+            // Append the date paragraph to the message div
+            timeAndIcon.appendChild(dateParagraph);
+            if(message.toDelete == 1) {
+                const cryptoIcon = document.createElement('i');
+                cryptoIcon.classList.add('icon-user-secret');
+                
+                cryptoIcon.style.marginTop = 'auto';
+                cryptoIcon.style.marginLeft = '3px';
+                timeAndIcon.appendChild(cryptoIcon);    
+            }
+    
+    
+            recDiv.appendChild(timeAndIcon);
+            //recDiv.appendChild(dateParagraph);
+
+            // Append the message div to the chat container
+            chat.appendChild(recDiv);
             jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
         }
 
