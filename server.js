@@ -1,4 +1,3 @@
-const browserSync = require('browser-sync');
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -12,58 +11,25 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
-const livereload = require('livereload');
-const connectLiveReload = require('connect-livereload');
-const cors = require('cors');
-
-
 const app = express();
 const server = http.createServer(app);
-
+const io = socketIo(server);
 const JWT_SECRET = process.env.JWT_SECRET;
 const uploadsDir = path.join(__dirname, 'uploads'); // Adjust the path according to your project structure
 
-// LiveReload setup
-const liveReloadServer = livereload.createServer();
-liveReloadServer.watch([path.join(__dirname, 'public'), path.join(__dirname, 'views')]);
-const bs = browserSync.create();
-
-// Initialize BrowserSync if not in production
-if (process.env.NODE_ENV !== 'production') {
-    bs.init({
-        proxy: 'http://localhost:3004', // Ensure this matches the Express server port
-        files: ['public/**/*.{css,js}', 'views/**/*.pug'],
-        reloadDelay: 1000,
-        open: false, // Prevent the browser from opening
-    });
-
-    app.use(require('connect-browser-sync')(bs)); // Ensure BrowserSync works with Express
-}
-
-app.use(cors({
-    origin: 'http://localhost:3004', // Allow requests from localhost:3004
-    methods: ['GET', 'POST'],
-    credentials: true
-}));
-
-const io = socketIo(server, {
-    cors: {
-        origin: 'http://localhost:3004',
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
-});
-
-// Add connect-livereload middleware
-app.use(connectLiveReload());
-
 app.use('/uploads', express.static(uploadsDir)); // Serve images from the uploads directory
+//app.use('/uploads', express.static('uploads'));
+
+// Create uploads directory if it doesn't exist
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
 }
-app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve static files from the uploads directory
+//app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const db = new sqlite3.Database('chat.db');
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -71,7 +37,12 @@ app.use(cookieParser());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
+
 // Initialize multer with the defined storage
+
+
+// Handle file upload route
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadsDir); // Set the destination to 'uploads' directory
@@ -88,25 +59,24 @@ app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
+    // Send the uploaded file path
     res.json({ filePath: `/uploads/${req.file.filename}` });
 });
 
-app.get('/chat', (req, res) => {
-    res.render('chat'); // Assuming 'chat' is the name of the Pug file for the chat page
-});
-
 // Encryption/Decryption functions
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // Use Buffer to create key from hex
 const IV_LENGTH = 16; // For AES, this is always 16
 
+// Function to encrypt a message
 function encrypt(text) {
     let iv = crypto.randomBytes(IV_LENGTH);
     let cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
+    return iv.toString('hex') + ':' + encrypted.toString('hex'); // Store IV with the encrypted message
 }
 
+// Function to decrypt a message
 function decrypt(text) {
     let textParts = text.split(':');
     let iv = Buffer.from(textParts.shift(), 'hex');
@@ -117,22 +87,19 @@ function decrypt(text) {
     return decrypted.toString();
 }
 
-// Start your server
-const PORT = process.env.PORT || 3004; // Ensure this matches your BrowserSync proxy
-server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
 
-// Reload browser when files change
-liveReloadServer.server.once("connection", () => {
-    setTimeout(() => {
-        liveReloadServer.refresh("/");
-    }, 100);
-});
-const b = 2;
+// db.close((err) => {
+//     if (err) {
+//         console.error('Error closing the database connection:', err.message);
+//     } else {
+//         console.log('Database connection closed.');
+//         // Now delete the file
+        
+//     }
+// });
 
-
- db.serialize(() => {
+// Initialize the SQLite database
+db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
@@ -149,9 +116,13 @@ const b = 2;
         recId INTEGER,
         message TEXT,
         read INTEGER NOT NULL,
+        sendTime TEXT NOT NULL,
+        toDelete INTEGER DEFAULT 0, 
         FOREIGN KEY (senderId) REFERENCES users(id),
         FOREIGN KEY (recId) REFERENCES users(id)
-    )`);
+    );`);
+    
+
 
     db.run(`CREATE TABLE IF NOT EXISTS blocked (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,24 +172,15 @@ app.get('/chat', (req, res) => {
 // User registration
 app.post('/register', (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required' });
-    }
     bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-            console.error('Hashing error:', err);
-            return res.status(500).json({ message: 'Server error' });
-        }
+        if (err) return res.status(500).json({ message: 'Server error' });
+
         db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hash], function (err) {
-            if (err) {
-                console.error('Database insertion error:', err);
-                return res.status(500).json({ message: 'User already exists or database error' });
-            }
+            if (err) return res.status(500).json({ message: 'User already exists' });
             res.status(200).json({ message: 'User registered successfully' });
         });
     });
 });
-
 
 // User login
 app.post('/login', (req, res) => {
@@ -232,11 +194,11 @@ app.post('/login', (req, res) => {
 
             const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
             res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production', // Set to true in production
-                sameSite: 'None' // or 'Strict'/'Lax'
+                httpOnly: true, 
+                secure: true, 
+                sameSite: 'None', // Explicitly set the SameSite attribute to 'None'
+                maxAge: 3600000 // 1 hour in milliseconds
             });
-            
             
             res.status(200).json({ message: 'Login successful' });
         });
@@ -248,7 +210,7 @@ io.on('connection', (socket) => {
     //console.log('A user connected with socket ID:', socket.id);
     
     // Socket listener for chat messages
-    socket.on('chatMessage', ({ username, messageSent, receiver }) => {
+    socket.on('chatMessage', ({ username, messageSent, receiver, sendTime, storeMessage }) => {
         // Find sender's ID using socketId
         db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, sender) => {
             if (err || !sender) {
@@ -290,31 +252,122 @@ io.on('connection', (socket) => {
     
                         // Log the encrypted message to verify
                         console.log('Encrypted message being sent:', encryptedMessage);
-    
+                        if(rec.receiver === sender.id && storeMessage) {
                         // Insert encrypted message into database
-                        db.run('INSERT INTO messages (senderId, recId, message, read) VALUES (?, ?, ?, ?)', 
-                            [sender.id, rec.id, encryptedMessage, 0], (err) => {
-                                if (err) {
-                                    console.error('Error saving message:', err);
-                                    return;
-                                }
-    
-                                // Send encrypted message to receiver
-                                io.to(rec.socketId).emit('message', { user: username, message: messageSent }); // Send original message
-    
-                                // Check if the receiver's `receiver` in the users table matches the sender's ID
-                                if (rec.receiver === sender.id) {
-                                    // Update the message 'read' status
-                                    db.run('UPDATE messages SET read = 1 WHERE recId = ? AND senderId = ?', 
-                                        [rec.id, sender.id], (err) => {
+                            db.run('INSERT INTO messages (senderId, recId, message, read, sendTime) VALUES (?, ?, ?, ?, ?)', 
+                                [sender.id, rec.id, encryptedMessage, 0, sendTime], 
+                                function (err) {
+                                    if (err) {
+                                        console.error('Error saving message:', err);
+                                        return;
+                                    }
+
+                                    // Send message with sendTime to the receiver
+                                    io.to(rec.socketId).emit('message', {
+                                        user: username,          // Sender's username
+                                        message: messageSent,     // Original (unencrypted) message to display
+                                        date: sendTime,            // Include the stored sendTime
+                                        store: storeMessage
+                                    });
+
+                                    // Check if the receiver's `receiver` matches the sender's ID
+                                    if (rec.receiver === sender.id) {
+                                        // Update the message 'read' status
+                                        db.run('UPDATE messages SET read = 1 WHERE recId = ? AND senderId = ?', 
+                                            [rec.id, sender.id], 
+                                            function (err) {
+                                                if (err) {
+                                                    console.error('Error updating message read status:', err);
+                                                } else {
+                                                    console.log(`Messages marked as read for receiver: ${receiver}`);
+                                                }
+                                            });
+                                        }
+                                    }
+                                );
+                        }
+                        else if (rec.receiver !== sender.id && !storeMessage) {
+                            // Insert the new message into the database
+                            db.run('INSERT INTO messages (senderId, recId, message, read, sendTime) VALUES (?, ?, ?, ?, ?)', 
+                                [sender.id, rec.id, encryptedMessage, 0, sendTime], 
+                                function (err) {
+                                    if (err) {
+                                        console.error('Error saving message:', err);
+                                        return;
+                                    }
+                        
+                                    // Get the last inserted ID to update the specific message
+                                    const insertedMessageId = this.lastID;
+                        
+                                    // Send message with sendTime to the receiver
+                                    io.to(rec.socketId).emit('message', {
+                                        user: username,          // Sender's username
+                                        message: messageSent,     // Original (unencrypted) message to display
+                                        date: sendTime,           // Include the stored sendTime
+                                        store: storeMessage
+                                    });
+                        
+                                    // Update the message to set 'read' to 0 and 'toDelete' to 1 for the just inserted message
+                                    db.run('UPDATE messages SET read = 0, toDelete = 1 WHERE id = ?', 
+                                        [insertedMessageId], 
+                                        function (err) {
                                             if (err) {
                                                 console.error('Error updating message read status:', err);
                                             } else {
-                                                console.log(`Messages marked as read for receiver: ${receiver}`);
+                                                console.log(`Message marked for deletion for receiver: ${receiver}`);
                                             }
                                         });
-                                }
+                                });
+                        }
+                        else if (rec.receiver !== sender.id && storeMessage) {
+                            // Insert the new message into the database
+                            db.run('INSERT INTO messages (senderId, recId, message, read, sendTime) VALUES (?, ?, ?, ?, ?)', 
+                                [sender.id, rec.id, encryptedMessage, 0, sendTime], 
+                                function (err) {
+                                    if (err) {
+                                        console.error('Error saving message:', err);
+                                        return;
+                                    }
+                        
+                                    // Get the last inserted ID to update the specific message
+                                    const insertedMessageId = this.lastID;
+                        
+                                    // Send message with sendTime to the receiver
+                                    io.to(rec.socketId).emit('message', {
+                                        user: username,          // Sender's username
+                                        message: messageSent,     // Original (unencrypted) message to display
+                                        date: sendTime,           // Include the stored sendTime
+                                        store: storeMessage
+                                    });
+                        
+                                    // Update the message to set 'read' to 0 and 'toDelete' to 1 for the just inserted message
+                                    db.run(`
+                                        UPDATE messages 
+                                        SET read = 1 
+                                        WHERE recId = ? AND senderId = ? 
+                                          AND read = 0`,  // Only update unread messages
+                                        [sender.id, rec.id],  // Use `rec.id` instead of `receiverResult.id`
+                                        (err) => {
+                                            if (err) {
+                                                console.error('Error marking messages as read:', err);
+                                            } else {
+                                                console.log(`Messages marked as read between ${username} and ${receiver}`);
+                                            }
+                                        }
+                                    );
+                                    
+                                });
+                        }
+                        else if (rec.receiver === sender.id && !storeMessage) {
+                            
+                            io.to(rec.socketId).emit('message', {
+                                user: username,          // Sender's username
+                                message: messageSent,     // Original (unencrypted) message to display
+                                date: sendTime,            // Include the stored sendTime
+                                store: storeMessage
                             });
+
+                        }
                     }
                 );
             });
@@ -347,10 +400,13 @@ socket.on('sendMeMessages', (username, receiver) => {
                 }
                 console.log(`Receiver updated successfully for user ${username}`);
 
-                // Fetch messages between the sender and receiver
+                // Fetch messages between the sender and receiver, now including sendTime
                 db.all(`
-                    SELECT messages.message, 
+                    SELECT messages.id, 
+                           messages.message, 
                            messages.read, 
+                           messages.sendTime, 
+                           messages.toDelete,   /* Fetch toDelete status */
                            sender.username AS senderUsername, 
                            receiver.username AS receiverUsername 
                     FROM messages 
@@ -365,28 +421,31 @@ socket.on('sendMeMessages', (username, receiver) => {
                             return;
                         }
 
-                        // Decrypt each message
+                        // Decrypt each message and include sendTime
                         const decryptedMessages = messages.map(msg => {
                             try {
                                 return {
-                                    message: decrypt(msg.message), // Decrypt the message text
+                                    id: msg.id,  // Include the message ID for deletion later
+                                    message: decrypt(msg.message),  // Decrypt the message text
                                     senderUsername: msg.senderUsername,
                                     receiverUsername: msg.receiverUsername,
-                                    read: msg.read
+                                    read: msg.read,
+                                    time: msg.sendTime,
+                                    toDelete: msg.toDelete
                                 };
                             } catch (decryptionError) {
                                 console.error('Error decrypting message:', decryptionError);
-                                return null; // Skip the message if it fails to decrypt
+                                return null;  // Skip the message if it fails to decrypt
                             }
-                        }).filter(msg => msg !== null); // Filter out null (failed decryption)
+                        }).filter(msg => msg !== null);  // Filter out null (failed decryption)
 
                         // Log decrypted messages to verify they are correctly decrypted
                         console.log('Decrypted messages to send:', decryptedMessages);
 
                         // Send decrypted messages and the receiver's profile image separately
                         socket.emit('messagesResponse', {
-                            messages: decryptedMessages, // Array of decrypted messages
-                            profileImage: receiverResult.profileImage // The receiver's profile image
+                            messages: decryptedMessages,  // Array of decrypted messages
+                            profileImage: receiverResult.profileImage  // The receiver's profile image
                         });
 
                         // Now mark messages as read if the receiver (user) has seen them
@@ -394,8 +453,8 @@ socket.on('sendMeMessages', (username, receiver) => {
                             UPDATE messages 
                             SET read = 1 
                             WHERE recId = ? AND senderId = ? 
-                              AND read = 0`, // Only update unread messages
-                            [sender.id, receiverResult.id], // recId is the sender (user), senderId is the receiver
+                              AND read = 0`,  // Only update unread messages
+                            [sender.id, receiverResult.id],  // recId is the sender (user), senderId is the receiver
                             (err) => {
                                 if (err) {
                                     console.error('Error marking messages as read:', err);
@@ -404,12 +463,26 @@ socket.on('sendMeMessages', (username, receiver) => {
                                 }
                             }
                         );
+
+                        // Check for and delete messages that have 'toDelete' set to 1
+                        const messagesToDelete = messages.filter(msg => msg.toDelete === 1).map(msg => msg.id);
+                        if (messagesToDelete.length > 0) {
+                            db.run(`DELETE FROM messages WHERE id IN (${messagesToDelete.join(',')})`, (err) => {
+                                if (err) {
+                                    console.error('Error deleting messages:', err);
+                                } else {
+                                    console.log('Messages with toDelete = 1 have been deleted:', messagesToDelete);
+                                }
+                            });
+                        }
                     }
                 );
             });
         });
     });
 });
+
+
 
 
 
@@ -436,7 +509,7 @@ socket.on('sendMeMessages', (username, receiver) => {
         });
     });
     
-    socket.on('login', (username) => {
+    socket.on('login', (username) => { 
         db.get('SELECT id, profileImage FROM users WHERE username = ?', [username], (err, user) => {
             if (err || !user) {
                 console.error('User not found:', username);
@@ -449,48 +522,57 @@ socket.on('sendMeMessages', (username, receiver) => {
                     console.error('Error updating socket ID:', err);
                     return;
                 }
+                
+                // Emit the friends list to the logged-in user
+                fetchFriends(user.id, (friends) => {
+                    io.to(socket.id).emit('friendsList', friends); // Send list to logged-in user
     
-                // Now that the socket ID is updated, fetch the user again
+                    // Notify each friend about their updated friend list
+                    friends.forEach(friend => {
+                        if (friend.socketId) {
+                            // Fetch the updated list of the friend's friends
+                            fetchFriends(friend.id, (updatedFriendsList) => {
+                                // Send the updated friend list to the friend
+                                io.to(friend.socketId).emit('friendsList', updatedFriendsList);
+                            });
+                        }
+                    });
+                });
+    
+                // Fetch the user again after socketId is updated
                 db.get('SELECT id, profileImage FROM users WHERE socketId = ?', [socket.id], (err, updatedUser) => {
                     if (err || !updatedUser) {
                         console.error('Updated user not found:', err);
                         return;
                     }
     
-                    // Emit user info including profile image if it exists
+                    // Emit user info (including profile image if it exists)
                     io.to(socket.id).emit('user info', {
                         id: updatedUser.id,
-                        profileImage: updatedUser.profileImage || null // Send the path or null if it doesn't exist
+                        profileImage: updatedUser.profileImage || null
                     });
     
-                    // Query the friends table for any invitations where this user is invited
-                    db.all('SELECT inviting FROM friends WHERE invited = ? AND accepted = 0', [updatedUser.id], (err, rows) => {
+                    // Fetch pending invitations
+                    db.all(`
+                        SELECT u.username, f.inviting 
+                        FROM friends f
+                        JOIN users u ON f.inviting = u.id
+                        WHERE f.invited = ? AND f.accepted = 0`, [updatedUser.id], (err, rows) => {
                         if (err) {
                             console.error('Error fetching invitations:', err);
                             return;
                         }
     
-                        // If there are pending invitations, send them to the user
-                        if (rows.length > 0) {
-                            rows.forEach(row => {
-                                db.get('SELECT username FROM users WHERE id = ?', [row.inviting], (err, invitingUser) => {
-                                    if (err) {
-                                        console.error('Error fetching inviting user:', err);
-                                        return;
-                                    }
+                        // Process and send pending invitations
+                        const pendingInvitations = rows.map(row => ({
+                            username: row.username,
+                            invitingId: row.inviting
+                        }));
     
-                                    // Emit the invitation to the invited user
-                                    io.to(socket.id).emit('send invitation', {
-                                        from: invitingUser.username,
-                                        message: `You have received an invitation from ${invitingUser.username}.`,
-                                        id: row.inviting // Send the inviting user's ID
-                                    });
-                                });
-                            });
-                        }
+                        io.to(socket.id).emit('pendingInvitations', pendingInvitations);
                     });
     
-                    // Count unread messages for the user
+                    // Count unread messages
                     db.all(`
                         SELECT senderId, COUNT(*) AS unreadCount 
                         FROM messages 
@@ -525,6 +607,32 @@ socket.on('sendMeMessages', (username, receiver) => {
             });
         });
     });
+    socket.on('give me friends to group', (username) => { 
+        db.get('SELECT id, profileImage FROM users WHERE username = ?', [username], (err, user) => {
+            if (err || !user) {
+                console.error('User not found:', username);
+                return;
+            }
+    
+            // Update the user's socket ID
+            
+                
+                
+                // Emit the friends list to the logged-in user
+                fetchFriends(user.id, (friends) => {
+                    io.to(socket.id).emit('friendsToGroup', friends); // Send list to logged-in user
+    
+                    // Notify each friend about their updated friend list
+                    
+                });
+    
+                // Fetch the user again after socketId is updated
+                
+            
+        });
+    });
+    
+    
     
     
     // socket.on('chatMessage', ({ message }) => {
@@ -870,25 +978,23 @@ socket.on('sendMeMessages', (username, receiver) => {
                 console.error('Invited user not found:', err);
                 return;
             }
-    
+
             const invitedId = invited.id;
             const invitedName = invited.username;
             const invitedImage = invited.profileImage;
-    
-            // Find the inviting user's socketId and profileImage based on their username (invitingName)
+
+            // Find the inviting user's info based on their username (invitingName)
             db.get('SELECT id, socketId, profileImage FROM users WHERE username = ?', [invitingName], (err, inviting) => {
                 if (err || !inviting) {
                     console.error('Inviting user not found:', err);
                     return;
                 }
-    
+
                 const invitingId = inviting.id;
                 const invitingSocketId = inviting.socketId;
                 const invitingImage = inviting.profileImage;
-    
-                // Only proceed if the decision is to accept the invitation
-                if (decision) {
-                    // Update the `accepted` column to 1 in the friends table
+
+                if (decision) {  // If the invitation is accepted
                     db.run('UPDATE friends SET accepted = 1 WHERE inviting = ? AND invited = ?', [invitingId, invitedId], function (err) {
                         if (err) {
                             console.error('Error updating friends table:', err);
@@ -896,61 +1002,62 @@ socket.on('sendMeMessages', (username, receiver) => {
                             console.log('No rows updated. Check if inviting and invited IDs are correct.');
                         } else {
                             console.log(`Invitation accepted by user ${invitedId}`);
-    
-                            // Fetch the updated friends list for both users (where accepted = 1)
+
+                            // Fetch and send the friends list for both users
                             const fetchFriends = (userId, callback) => {
                                 const query = `
                                     SELECT 
                                         CASE 
                                             WHEN f.inviting = ? THEN u2.username
                                             ELSE u1.username
-                                        END AS friendName,
+                                        END AS name,
                                         CASE 
                                             WHEN f.inviting = ? THEN u2.profileImage
                                             ELSE u1.profileImage
-                                        END AS friendImage
+                                        END AS image,
+                                        CASE 
+                                            WHEN f.inviting = ? THEN u2.socketId
+                                            ELSE u1.socketId
+                                        END AS friendSocketId,
+                                        CASE 
+                                            WHEN (CASE WHEN f.inviting = ? THEN u2.socketId ELSE u1.socketId END) IS NOT NULL
+                                            THEN 1 ELSE 0
+                                        END AS online
                                     FROM friends f
                                     JOIN users u1 ON f.inviting = u1.id
                                     JOIN users u2 ON f.invited = u2.id
                                     WHERE (f.inviting = ? OR f.invited = ?) AND f.accepted = 1
                                 `;
-                                db.all(query, [userId, userId, userId, userId], (err, friends) => {
+                                db.all(query, [userId, userId, userId, userId, userId, userId], (err, friends) => {
                                     if (err) {
                                         console.error('Error fetching friends:', err);
                                     }
                                     callback(friends);
                                 });
                             };
-    
-                            // Fetch and send the invited user's friends list (only show the inviting user's data)
+
+                            // Send the invited user's updated friends list
                             fetchFriends(invitedId, (invitedFriends) => {
-                                socket.emit('friendsList', {
-                                    friends: invitedFriends,
-                                });
+                                socket.emit('friendsList', invitedFriends);
                             });
-    
-                            // Fetch and send the inviting user's friends list (only show the invited user's data)
+
+                            // Send the inviting user's updated friends list
                             fetchFriends(invitingId, (invitingFriends) => {
-                                io.to(invitingSocketId).emit('friendsList', {
-                                    friends: invitingFriends,
-                                });
+                                io.to(invitingSocketId).emit('friendsList', invitingFriends);
                             });
-    
-                            // Optionally, send the invited user's details to the inviting user's socket
+
+                            // Optionally, confirm the invitation to both parties
                             io.to(invitingSocketId).emit('invitationConfirmed', {
                                 invitedName: invitedName,
                                 invitedImage: invitedImage
                             });
-    
-                            // Optionally, send the inviting user's details to the invited user's socket
                             socket.emit('invitationConfirmed', {
                                 invitingName: invitingName,
                                 invitingImage: invitingImage
                             });
                         }
                     });
-                } else {
-                    // If rejected, delete the entry from the friends table
+                } else {  // If the invitation is rejected
                     db.run('DELETE FROM friends WHERE inviting = ? AND invited = ?', [invitingId, invitedId], (err) => {
                         if (err) {
                             console.error('Error deleting from friends table:', err);
@@ -962,7 +1069,15 @@ socket.on('sendMeMessages', (username, receiver) => {
             });
         });
     });
-    
+    function updateSocketId(userId, socketId) {
+        db.run('UPDATE users SET socketId = ? WHERE id = ?', [socketId, userId], (err) => {
+            if (err) {
+                console.error('Error updating socketId:', err);
+            } else {
+                console.log(`SocketId updated for userId ${userId}`);
+            }
+        });
+    }
     
     
     
@@ -1062,63 +1177,163 @@ socket.on('uploadImage', ({ imageData, fileType }) => {
 
 
 
+// Handle block event
 socket.on('block', (blockedUsername, callback) => {
-    // Find the username of the user who is blocking
-    db.get('SELECT username FROM users WHERE socketId = ?', [socket.id], (err, blocker) => {
+    // Find the user who is blocking based on socketId
+    db.get('SELECT id, username FROM users WHERE socketId = ?', [socket.id], (err, blocker) => {
         if (err || !blocker) {
             console.error('Blocker not found:', err);
             return callback({ success: false, error: 'Blocker not found' });
         }
 
-        // Find the ID and socketId of the user being blocked
+        const blockerId = blocker.id;
+        const blockerUsername = blocker.username;
+
+        // Find the user being blocked by their username
         db.get('SELECT id, socketId FROM users WHERE username = ?', [blockedUsername], (err, blocked) => {
             if (err || !blocked) {
                 console.error('Blocked user not found:', err);
                 return callback({ success: false, error: 'Blocked user not found' });
             }
 
-            // Insert into the blocked table using the username of the blocker
-            db.run('INSERT INTO blocked (blocker, blocked) VALUES ((SELECT id FROM users WHERE username = ?), ?)', [blocker.username, blocked.id], function(err) {
+            const blockedId = blocked.id;
+            const blockedSocketId = blocked.socketId;
+
+            // Insert the block relationship into the blocked table
+            db.run('INSERT INTO blocked (blocker, blocked) VALUES (?, ?)', [blockerId, blockedId], function(err) {
                 if (err) {
                     console.error('Error inserting into blocked table:', err);
                     return callback({ success: false, error: 'Database error' });
                 }
 
-                // Remove the friendship if it exists
-                db.run('DELETE FROM friends WHERE (inviting = (SELECT id FROM users WHERE username = ?) AND invited = ?) OR (inviting = ? AND invited = (SELECT id FROM users WHERE username = ?))', 
-                    [blocker.username, blocked.id, blocked.id, blocker.username], (err) => {
+                // Remove any existing friendship between the users
+                db.run('DELETE FROM friends WHERE (inviting = ? AND invited = ?) OR (inviting = ? AND invited = ?)', 
+                    [blockerId, blockedId, blockedId, blockerId], (err) => {
                     if (err) {
                         console.error('Error removing friendship:', err);
                         return callback({ success: false, error: 'Database error' });
                     }
+
+                    console.log(`Friendship between ${blockerUsername} and ${blockedUsername} removed due to block.`);
+
+                    // Fetch updated friends lists and send them to both users
+                    sendUpdatedFriendsList(blockerId);
+                    sendUpdatedFriendsList(blockedId);
+
+                    // Check if the blocked user has an active socket connection and notify them
+                    if (blockedSocketId) {
+                        io.to(blockedSocketId).emit('blockedNotification', blockerUsername);
+                        console.log(`${blockedUsername} has been notified of the block.`);
+                    } else {
+                        console.log(`Blocked user ${blockedUsername} is not currently online.`);
+                    }
+
+                    // Notify the client (blocker) about the successful block
+                    callback({ success: true, message: `You have blocked ${blockedUsername}` });
                 });
-
-                // Check if the blocked user has an active socket connection
-                if (blocked.socketId) {
-                    // Send a message to the blocked user if they are online
-                    io.to(blocked.socketId).emit('blockedNotification', blocker.username);
-                } else {
-                    console.log(`Blocked user ${blockedUsername} is not currently online.`);
-                }
-
-                // Notify the client about the successful block and invoke the callback
-                callback({ success: true, message: `You have blocked ${blockedUsername}` });
             });
         });
     });
 });
 
+// Helper function to fetch the updated friends list and send it to the user
+const sendUpdatedFriendsList = (userId) => {
+    const query = `
+        SELECT 
+            u.id AS id,
+            u.username AS name,
+            u.profileImage AS image,
+            u.socketId AS socketId,
+            CASE WHEN u.socketId IS NOT NULL THEN 1 ELSE 0 END AS online
+        FROM friends f
+        JOIN users u ON (f.inviting = u.id OR f.invited = u.id)
+        WHERE (f.inviting = ? OR f.invited = ?) AND f.accepted = 1
+        AND u.id != ?
+    `;
 
-socket.on('disconnect', () => {
-    // Update both socketId and receiver to NULL when a user disconnects
-    db.run('UPDATE users SET socketId = NULL, receiver = NULL WHERE socketId = ?', [socket.id], (err) => {
+    db.all(query, [userId, userId, userId], (err, friends) => {
         if (err) {
-            console.error('Error clearing socket ID and receiver:', err);
-        } else {
-            console.log(`Socket ID and receiver cleared for socket: ${socket.id}`);
+            console.error('Error fetching friends list:', err);
+            return;
         }
+
+        // Fetch the user's socket ID to send them the updated friends list
+        db.get('SELECT socketId FROM users WHERE id = ?', [userId], (err, user) => {
+            if (err || !user || !user.socketId) {
+                console.error('User not found or not online:', err);
+                return;
+            }
+
+            // Send the updated friends list to the client
+            io.to(user.socketId).emit('friendsList', friends
+            );
+        });
+    });
+};
+
+
+
+// Handling 'disconnect' event
+socket.on('disconnect', () => {
+    // First, find the user that disconnected based on the socketId
+    db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, disconnectedUser) => {
+        if (err || !disconnectedUser) {
+            console.error('Disconnected user not found:', err);
+            return;
+        }
+
+        const disconnectedUserId = disconnectedUser.id;
+
+        // Clear the socketId and receiver fields
+        db.run('UPDATE users SET socketId = NULL, receiver = NULL WHERE id = ?', [disconnectedUserId], (err) => {
+            if (err) {
+                console.error('Error clearing socketId and receiver:', err);
+            } else {
+                console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
+
+                // Fetch the friends of the disconnected user
+                fetchFriends(disconnectedUserId, (friends) => {
+                    // Notify each friend about their updated friend list
+                    friends.forEach(friend => {
+                        if (friend.socketId) {
+                            // Fetch the updated list of the friend's friends
+                            fetchFriends(friend.id, (updatedFriendsList) => {
+                                // Send the updated friend list to the friend
+                                io.to(friend.socketId).emit('friendsList', updatedFriendsList);
+                            });
+                        }
+                    });
+                });
+            }
+        });
     });
 });
+
+// Helper function to fetch friends with username, profile image, and online status
+const fetchFriends = (userId, callback) => {
+    const query = `
+        SELECT 
+            u.id AS id,
+            u.username AS name,
+            u.profileImage AS image,
+            u.socketId AS socketId,
+            CASE WHEN u.socketId IS NOT NULL THEN 1 ELSE 0 END AS online
+        FROM friends f
+        JOIN users u ON (f.inviting = u.id OR f.invited = u.id)
+        WHERE (f.inviting = ? OR f.invited = ?) AND u.id != ? AND f.accepted = 1
+    `;
+
+    db.all(query, [userId, userId, userId], (err, friends) => {
+        if (err) {
+            console.error('Error fetching friends:', err);
+            callback([]);
+        } else {
+            callback(friends);
+        }
+    });
+};
+
+
 
     
     function findBlocked(searchUser, socketId) {
@@ -1181,9 +1396,8 @@ socket.on('disconnect', () => {
 });
 
 // Start the server
-// const PORT = process.env.PORT || 3004;
-// server.listen(PORT, () => {
-//     //console.log(`Server is listening on port ${PORT}`);
-// });
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    //console.log(`Server is listening on port ${PORT}`);
+});
 
-const a = 6
