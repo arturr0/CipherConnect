@@ -5,7 +5,6 @@ html(lang='en')
         meta(name='viewport' content='width=device-width, initial-scale=1.0')
         title CipherConnect
         script(src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js')
-        script(src='http://localhost:35729/livereload.js')
         link(rel="shortcut icon" href="http://localhost:3000/chat2.ico")
         script(src='https://code.jquery.com/jquery-3.6.0.min.js')
         link(rel='preload' href='/css/fontello.css' as='style')
@@ -25,8 +24,7 @@ html(lang='en')
                     input#search-input(type='text', placeholder='Find User')
                     div#users
             #friends
-                    #friendsContainer
-                        | FRIENDS
+                #friendsContainer
             #menu
                 div#menuDiv
                     div#messagesNotRead.dropdown-container
@@ -81,9 +79,10 @@ html(lang='en')
             .modal#confirmModal
                 .modal-content
                     p#confirmText
-                    button#yesBtn Yes
-                    button#noBtn No
-                    button#cancelBtn Cancel
+                    #modalButtons
+                        button#yesBtn Yes
+                        button#noBtn No
+                        button#cancelBtn Cancel
         script(src='/chat.js' type='text/javascript')
         script.
             $(document).ready(function() {
