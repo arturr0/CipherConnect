@@ -1325,12 +1325,12 @@ socket.on('uploadImage', ({ imageData, fileType }) => {
 
 let isCreatingGroup = false; // Add a flag to track group creation state
 
-socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
+socket.on('createGroup', ({ groupName, invited, username }) => {
     if (isCreatingGroup) {
         console.log("Group creation in progress, please wait.");
         return; // Prevent further calls if a group is already being created
     }
-    console.log("img", avatar)
+
     isCreatingGroup = true; // Set the flag to true when starting the group creation process
 
     // Prepare SQL query and values
