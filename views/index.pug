@@ -1,10 +1,8 @@
 doctype html
 html
     head
-        title CipherConnect
+        title Authorization
         link(rel='stylesheet', href='/css/index.css')
-        link(rel='shortcut icon', href='http://localhost:3000/chat2.ico')
-        script(src='http://localhost:35729/livereload.js')
         script.
             document.addEventListener('DOMContentLoaded', () => {
                 const loginButton = document.getElementById('login-button');
@@ -77,12 +75,12 @@ html
 
     body
         .form-container
-            h2 fffffffffff
+            h2 Welcome to the Chat App
             form#auth-form
                 label(for='username') Username:
                 input(type='text' id='username' name='username' required)
                 br
-                label(for='password') s
+                label(for='password') Password:
                 input(type='password' id='password' name='password' required)
                 br
                 button(type='button' id='login-button') Log In
