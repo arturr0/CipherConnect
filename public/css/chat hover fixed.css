@@ -1,12 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-
 body {
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%); */
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
   padding: 0;
   margin: 0;
-  color: white;
-  font-family: 'Roboto', sans-serif;
+  color: white
 }
 label {
   display: flex;
@@ -33,7 +30,7 @@ button:hover {
   color: black;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
-#message-container::-webkit-scrollbar, #friendsContainer::-webkit-scrollbar, #users::-webkit-scrollbar {
+#message-container::-webkit-scrollbar {
   width: 10px; /* Set the width of the scrollbar */
   
 }
@@ -44,13 +41,11 @@ button:hover {
 #users {
   display: flex;
   flex-direction: column;
-  scrollbar-gutter: stable;
+  height: 100%;
   overflow-y: auto;
-  height: 90%;
-  overflow-x: hidden;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
-#message-container::-webkit-scrollbar, #friendsContainer::-webkit-scrollbar, #users::-webkit-scrollbar {
+#message-container::-webkit-scrollbar {
   width: 10px; /* Set the width of the scrollbar */
   
 }
@@ -59,8 +54,6 @@ button:hover {
 }
 #search-input {
   align-self: center;
-  margin: 10px;
-  width: 15vw;
 }
 
 .user {
@@ -94,12 +87,10 @@ button:hover {
     width: 40px; /* Same size as the image */
     height: 40px; /* Same size as the image */
     background: rgb(63,94,251);
-    background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(67,97,110,1) 100%);
+    background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(24,26,138,1) 100%);
     border-radius: 50%; /* Make it a circle */
     font-weight: bold; /* Make initials bold */
     color: white; /* Change color as needed */
-    font-size: 25px;
-    font-weight: bolder;
 }
 
 /* .loading-placeholder {
@@ -116,7 +107,7 @@ button:hover {
     display: flex;
     flex-direction: column; /* Stack username and buttons vertically */
     /* align-items: center; Center buttons horizontally */
-    /* width: 100px; */
+    width: 100px;
     margin-left: 10px;
 }
 
@@ -129,13 +120,13 @@ button:hover {
 
 
 /* Scrollbar thumb */
-#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #friendsContainer::-webkit-scrollbar-thumb {
+#message-container::-webkit-scrollbar-thumb {
   background-color: darkgray; /* Color of the scrollbar thumb */
   
 }
 
 /* Scrollbar track */
-#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #friendsContainer::-webkit-scrollbar-track {
+#message-container::-webkit-scrollbar-track {
   background: transparent; /* Background of the scrollbar track */
 }
 
@@ -146,7 +137,7 @@ button:hover {
 }
 
 /* For Internet Explorer and Edge (legacy) */
-#message-container, #users, #searchUsers, #friendsContainer {
+#message-container {
   -ms-overflow-style: scrollbar; /* Sets the scrollbar to be visible */
 }
 @font-face {
@@ -159,16 +150,20 @@ button:hover {
 h1 a {
   color: red;
 }
-
+#mainContent {
+  position: relative;
+  z-index: 0;
+}
 #menu {
   width: 100vw;
   height: 10vh;
   background: transparent;
   display: flex;
+  background: rgb(4, 13, 37);
   background: linear-gradient(0deg, rgba(4, 13, 37, 1) 12%, rgba(23, 104, 112, 1) 85%);
 }
 .menuIcon {
-  font-size: 40px;;
+  font-size: 40px;
 }
 #menuDiv {
   display: flex;
@@ -179,18 +174,18 @@ h1 a {
 .counter {
   margin-top: 10px;
   margin-bottom: auto;
+  background: rgb(63, 94, 251);
   background: radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(70, 199, 252, 1) 100%);
   border-radius: 50%;
-  width: 21px;    
-  height: 21px;
+  width: 15px;    
+  height: 15px;
   display: flex; 
   justify-content: center;
   align-items: center;
   z-index: 2;
   position: absolute;  
   top: 0;
-  left: calc(22%);
-  font-weight: bolder; 
+  left: calc(20%); 
 }
 
 .dropdown-container {
@@ -208,18 +203,16 @@ h1 a {
   border: none;
   cursor: pointer;
 }
-#invitationContent, #messagesContent, #groupsContent {
-  width: 10vw;
-}
+
 /* Dropdown content styling */
 .dropdown-content {
-  position: absolute; /* Use absolute positioning */
+  position: absolute;
   width: 10vw;
-  max-height: 0; /* Initially hidden */
-  overflow: auto; /* Prevent scrollbar by default */
+  max-height: 0;
+  overflow-y: hidden; /* Prevent scrollbar by default */
   visibility: hidden;
   opacity: 0;
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; /* Delay visibility change */
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
   z-index: 1;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: #0483c9;
@@ -228,19 +221,9 @@ h1 a {
 /* Show dropdown on hover with smooth transition */
 .dropdown-container:hover .dropdown-content {
   max-height: 200px; /* Max height of the dropdown before scrolling */
-  visibility: visible; /* Make it visible */
-  opacity: 1; /* Fade in */
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Smooth transition */
-  z-index: 20;
+  visibility: visible;
+  opacity: 1;
 }
-
-.no-hover .dropdown-content {
-  max-height: 0; /* Prevent max-height */
-  visibility: hidden; /* Hide content */
-  opacity: 0; /* Fade out */
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Smooth transition */
-}
-
 
 /* Sliding line effect */
 .dropdownToggle {
@@ -253,10 +236,6 @@ h1 a {
 }
 
 /* Underline styling */
-.dropdownToggle {
-  position: relative; /* Ensure the position is relative for the ::before pseudo-element */
-}
-
 .dropdownToggle::before {
   content: '';
   position: absolute;
@@ -265,12 +244,11 @@ h1 a {
   height: 2px;
   width: 0%; /* Initially no line */
   background-color: #3f5efb; /* Line color */
-  transition: width 0.4s ease; /* Animate width only */
+  transition: width 0.4s ease, left 0.4s ease;
 }
 
 /* Show sliding line when hovering over the dropdown container or toggle */
-.dropdown-container:hover .dropdownToggle::before,
-.dropdownToggle:hover::before {
+.dropdown-container:hover .dropdownToggle::before {
   width: 100%; /* Full width on hover */
 }
 
@@ -279,9 +257,11 @@ h1 a {
   width: 100%; /* Keep the line full width */
 }
 
-/* Remove active state behavior that moves the line */
-
-
+/* Active state for sliding underline */
+.dropdownToggle:active::before {
+  left: 100%; /* Start sliding to the right */
+  width: 0%; /* Collapse the line */
+}
 
 /* Enable scrolling only when necessary */
 /* Scrollbar Styling for Dropdowns */
@@ -321,35 +301,30 @@ h1 a {
   background-color: #ddd;
 }
 
-/* Hide dropdown with sliding effect */
-.dropdown-container .dropdown-content.hide {
-  max-height: 0; /* Hide the content */
-  opacity: 0; /* Fade out */
-  visibility: hidden; /* Prevent interaction */
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; /* Smooth transition */
-}
-
-/* #friends {
+#friends {
   width: calc(25vw - 1px);
-  
+  /* border-right: solid 1px whitesmoke; */
   opacity: 1;
   visibility: visible;
   transition: opacity 0.5s ease, visibility 0s linear 0s;
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
- } */
- 
+}
 #friends.hidden {
   opacity: 0;
   visibility: hidden;
-  /* transition: opacity 0.5s ease, visibility 0s linear 0s; Ensure visibility is instant when shown */
-  transition: right 0.5s ease, opacity 0.5s ease;
+  transition: opacity 0.5s ease, visibility 0s linear 0s; /* Ensure visibility is instant when shown */
 }
 #typingIndicator {
   display: none;
   color: green;
 }
-
+#inputAndIcons {
+  display: flex;
+  margin-bottom: 10px;
+  width: 80%;
+  
+}
 @keyframes blinker {
   50% {
     opacity: 0;
@@ -366,14 +341,12 @@ h1 a {
   height: 100%;
   flex-direction: column;
   height: 90vh;
-  width: 50vw;
+  width: calc(50vw - 1px);
   /* border-right: solid 1px #3f5efb;
   border-left: solid 1px #3f5efb;
   box-shadow: 
     -4px 0px 6px 0px rgba(63, 94, 251, 0.5), 
     4px 0px 6px 0px rgba(63, 94, 251, 0.5) inset;  */
-  margin-left: auto;
-  z-index: 10;
 
 }
 #message-container {
@@ -429,9 +402,7 @@ h1 a {
   justify-content: center;
   align-items: center;
   background: rgb(63,94,251);
-  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(67,97,110,1) 100%);
-  font-size: 50px;
-  font-weight: bolder;
+  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(24,26,138,1) 100%);
 }
 #avatar {
   width: 80px;
@@ -477,8 +448,6 @@ h1 a {
   min-height: 0; /* Prevents overflow issues */
   padding: 0; /* Optional padding around chat */
   overflow: hidden;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
 }
 #receiver {
   margin-bottom: auto;
@@ -616,7 +585,7 @@ h1 a {
 }
 
 
-#searchUsers.animate {
+#options.animate {
   left: 0; /* Move into view */
   opacity: 1; /* Make visible */
   visibility: visible; /* Ensure it's visible */
@@ -626,25 +595,25 @@ h1 a {
   width: 100vw;
   height: 100vh;
   /* background: #007BFF; */
-  /* z-index: 0; */
+  z-index: 0;
   position: relative; /* Position for stacking context */
 }
 
 
 
 /* Scrollbar thumb */
-#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #friendsContainer::-webkit-scrollbar-thumb {
+#message-container::-webkit-scrollbar-thumb {
   background-color: darkgray; /* Color of the scrollbar thumb */
   
 }
 
 /* Scrollbar track */
-#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #friendsContainer::-webkit-scrollbar-track {
+#message-container::-webkit-scrollbar-track {
   background: transparent; /* Background of the scrollbar track */
 }
 
 /* For Firefox */
-#message-container, #users, #searchUsers, #friendsContainer {
+#message-container {
   scrollbar-width: thin; /* Sets the scrollbar to be thin (default option) */
   scrollbar-color: darkgray transparent; /* Color of the scrollbar thumb and track */
   overflow-y: auto;
@@ -652,7 +621,7 @@ h1 a {
 }
 
 /* For Internet Explorer and Edge (legacy) */
-#message-container, #users, #searchUsers, #friendsContainer {
+#message-container {
   -ms-overflow-style: scrollbar; /* Sets the scrollbar to be visible */
   flex-wrap: nowrap;
   display: flex;
@@ -670,7 +639,7 @@ h1 a {
 }
 #mainContent {
   position: relative;
-  /* z-index: 0; */
+  z-index: 0;
 }
 .vericalBorder {
   width: 2px;
@@ -683,7 +652,7 @@ h1 a {
   box-shadow: 0 0 5px 7px white;
 }
 
-#chat_account {
+#friends_chat_account {
   display: flex;
   /* height: 90vh; */
   /* background-color: aquamarine; */
@@ -695,13 +664,11 @@ h1 a {
 }
 #inputAndIcons {
   display: flex;
-  
+  margin-bottom: 10px;
   width: 100%;
   justify-content: center;
   /* border-top: solid 1px #3f5efb;
   box-shadow: 0px -4px 6px 0px rgba(63, 94, 251, 0.5); Adjusted shadow */
-  background: rgb(4,13,37);
-  
 }
 
 @keyframes blinker {
@@ -764,7 +731,7 @@ h1 a {
   
   align-self: flex-end;
   max-width: 300px;
-  padding: 1em 1em 0.2em;
+  padding: 1em;
   border-inline: var(--t) solid #0000;
   border-radius: calc(var(--r) + var(--t))/var(--r);
   mask: 
@@ -774,14 +741,12 @@ h1 a {
   /* background: linear-gradient(135deg,#FE6D00,#1384C5) border-box; */
   color: #fff;
   margin-bottom: 10px;
-  display: flex;
-  flex-direction: column;
 }
 .left {
   --_p: 0;
   border-bottom-left-radius: 0 0;
   align-self: end;
-  margin-right: 20px;
+  margin-left: 20px;
   background: #87878a;
 }
 .right {
@@ -829,169 +794,32 @@ h1 a {
   padding: 10px;
   font-weight: bold;
 }
-#friends {
+#options {
   position: absolute;
-  width: 25vw; /* Take up 25% of the viewport width */
-  left: 0; /* Start fully visible */
-  top: 10vh;
-  height: 90vh;
-  transition: left 0.5s ease; /* Animate horizontal movement */
-  /* z-index: -10; */
-  display: flex;
-  flex-direction: column;
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
-}
-#friendsSearchBg {
-  position: absolute;
-  width: 25vw; /* Take up 25% of the viewport width */
-  left: 0; /* Start fully visible */
-  top: 10vh;
-  height: 90vh;
-  
-  z-index: -11;
-  
-  background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
-}
-#friendsContainer {
-  height: 96%;
-  overflow: hidden;
-  scrollbar-gutter: stable;
-  
-}
-#friendsContainer:hover {
-  
-  
-  overflow: auto;
-}
-#friends.move-left {
-  left: +25vw; /* Move friends left by 25% of the viewport */
-}
-
-#friends.move-right {
-  left: 0; /* Back to original position (fully visible) */
-}
-
-#searchUsers {
-  position: absolute;
-  transform: translateX(-100%); /* Start off-screen to the left */
-  top: 10vh;
-  width: 25vw;
-  height: 90vh;
-  transition: transform 0.5s ease, opacity 0.5s ease;
-  opacity: 1;
-  visibility: visible;
+  left: -25vw; /* Start completely off-screen */
+  top: +10vh;
+  /* width: 25vw; Set width as 50% of viewport width */
+  height: 90vh; /* Fixed height */
+  /* background-color: #007BFF; Rectangle color */
+  transition: left 0.5s ease, opacity 0.5s ease; /* Animation effect */
+  opacity: 0; /* Start invisible */
+  visibility: hidden; /* Initially hidden */
   z-index: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 
-#searchUsers.move-left {
-  transform: translateX(0); /* Fully in view */
+#options.animate {
+  left: 0; /* Move into view */
+  opacity: 1; /* Make visible */
+  visibility: visible; /* Ensure it's visible */
 }
-
-#searchUsers.move-right {
-  transform: translateX(-100%); /* Move back off-screen */
-}
-
-#searchUsers.hidden {
-  opacity: 0;
-  visibility: hidden;
-}
-
-
 
 #content {
   width: 100vw;
   height: 100vh;
   /* background: #007BFF; */
-  /* z-index: 0; */
+  z-index: 0;
   position: relative; /* Position for stacking context */
 }
 
-#mainContent .modal, #createGroup .modal {
-  visibility: hidden; /* Initially hidden */
-  position: absolute; /* Absolute positioning within the parent */
-  left: 50%; /* Center horizontally */
-  top: 50%; /* Center vertically */
-  /* width: 55vw;
-  height: 20vh; */
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 15;
-
-  /* Use transform to align the center of the modal */
-  transform: translate(-50%, -50%) scale(0); /* Start hidden with scale 0 */
-  transition: transform 0.3s ease; /* Transition effect for scaling */
-}
-
-#mainContent .modal.show, #createGroup .modal.show{
-  display: flex; /* Show the modal */
-  transform: translate(-50%, -50%) scale(1); /* Grow modal */
-}
-.modal {
-  max-height: 90vh;
-  min-width: 40vw;
-}
-.modal-content {
-  background: rgb(63,94,251);
-  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%);
-  padding: 20px;
-  /* max-width: 100%; */
-  /* height: auto; Ensure content can grow */
-  /* height: 100%; Prevent overflow */
-  overflow-y: auto; /* Allow scrolling if content exceeds */
-  display: flex;
-  flex-direction: column;
-  align-content: center;
-  align-items: center;
-  min-width: 40vw;
-}
-
-
-.modal button {
-  margin: 10px;
-  padding: 8px 16px;
-}
-.modalButtons {
-  display: inline-block;
-  margin: 0 auto;
-}
-input[type="radio"], input[type="checkbox"] {
-  appearance: none;
-  border: 1px solid #d3d3d3;
-  width: 30px;
-  height: 30px;
-  content: none;
-  outline: none;
-  margin: 0;
-  position: relative; /* Add relative positioning */
-}
-
-/* Styles for checked state */
-input[type="radio"]:checked::before, input[type="checkbox"]:checked::before {
-  content: "\2713";
-  font-size: 16px; /* Match this to a size that fits within the input */
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); /* Center the checkmark */
-  color: rgb(1, 36, 1) !important;
-}
-
-
-/* Styles for checked state's label and icon */
-input[type="checkbox"]:checked + label::after {
-  content: "\2713";
-  position: absolute;
-  font-size: 16px;
-  color: green;
-  border: 1px solid #d3d3d3;
-}
-#friendsToGroup {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
