@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Assuming socket is already initialized
  // Declare avatar variable at the top
  function setEqualUserDivWidth() {
-    const userDivs = document.querySelectorAll('.user-info');
+    const userDivs = document.querySelectorAll('.username');
     let maxWidth = 0;
 
     // Find the maximum width of all user-info divs
@@ -245,11 +245,15 @@ const handleFriendsToGroup = (data) => {
     const groupName = "name"; // Modify this to get the actual group name if necessary
     const modalContent = document.getElementById('friendsToGroup');
     modalContent.innerHTML = ''; // Clear previous content
+    const friends = document.createElement('div');
+    friends.id = "scrolledFriends";
+    modalContent.appendChild(friends);
     if (data.length > 0) {
     // Create the .accountContentText div
         createGroupBtn.style.display = 'block';
         document.getElementById('groupMessage').textContent = 'Create New Group'
         const accountContentText = document.createElement('div');
+        
         accountContentText.classList.add('accountContentText');
         const nameInput = document.createElement('input');
 
@@ -293,6 +297,7 @@ const handleFriendsToGroup = (data) => {
         // Create user divs for each friend
         data.forEach((friend) => {
             const userDiv = document.createElement('div');
+            //const friends = document.getElementById('friends')
             userDiv.classList.add('user');
             userDiv.style.flexGrow = '1';
             const profileContainer = document.createElement('div');
@@ -322,7 +327,8 @@ const handleFriendsToGroup = (data) => {
 
             userDiv.appendChild(userInfoDiv);
             userDiv.appendChild(checkbox);
-            fragment.appendChild(userDiv);
+            friends.appendChild(userDiv)
+            fragment.appendChild(friends);
 
             // Load friend image if available
             if (friend.image) {
