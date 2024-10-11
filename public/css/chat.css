@@ -932,16 +932,18 @@ h1 a {
 }
 .modal {
   max-height: 90vh;
-  min-width: 40vw;
+  width: 40vw;
 }
 .modal-content {
   background: rgb(63,94,251);
   background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%);
-  padding: 20px;
+  /* padding: 20px; */
+  padding: 20px 0 20px 0;
+
   /* max-width: 100%; */
   /* height: auto; Ensure content can grow */
   /* height: 100%; Prevent overflow */
-  overflow-y: auto; /* Allow scrolling if content exceeds */
+  /* overflow-y: auto; Allow scrolling if content exceeds */
   display: flex;
   flex-direction: column;
   align-content: center;
@@ -957,6 +959,11 @@ h1 a {
 .modalButtons {
   display: inline-block;
   margin: 0 auto;
+}
+#scrolledFriends {
+  overflow: auto;
+  max-height: 50vh;
+  width: 40vw;
 }
 input[type="radio"], input[type="checkbox"] {
   appearance: none;
