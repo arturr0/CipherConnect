@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkbox Text to Array</title>
+</head>
+<body>
+
+<!-- Example divs with checkboxes and text -->
+<div class="item">
+    <input type="checkbox" class="check-item">
+    <div class="text-content">Item 1</div>
+</div>
+
+<div class="item">
+    <input type="checkbox" class="check-item">
+    <div class="text-content">Item 2</div>
+</div>
+
+<div class="item">
+    <input type="checkbox" class="check-item">
+    <div class="text-content">Item 3</div>
+</div>
+
+<div class="item">
+    <input type="checkbox" class="check-item">
+    <div class="text-content">Item 4</div>
+</div>
+
+<!-- Display the array result -->
+<p>Checked Items:</p>
+<div id="output"></div>
+
+<script>
+    // Array to store the checked items' text
+    let checkedItems = [];
+
+    // Get all checkboxes
+    const checkboxes = document.querySelectorAll('.check-item');
+
+    // Loop through all checkboxes and add event listener
+    checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', function() {
+            const textContent = this.nextElementSibling.textContent;
+
+            if (this.checked) {
+                // Add the corresponding text to the array when checked
+                checkedItems.push(textContent);
+            } else {
+                // Remove the corresponding text from the array when unchecked
+                checkedItems = checkedItems.filter(item => item !== textContent);
+            }
+            console.log(checkedItems);
+            // Display the updated array
+            document.getElementById('output').textContent = checkedItems.join(', ');
+        });
+    });
+</script>
+
+</body>
+</html>
