@@ -33,7 +33,7 @@ button:hover {
   color: black;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
-#message-container::-webkit-scrollbar, #friendsAndGroups::-webkit-scrollbar, #users::-webkit-scrollbar, #scrolledFriends::-webkit-scrollbar  {
+#message-container::-webkit-scrollbar, #friendsContainer::-webkit-scrollbar, #users::-webkit-scrollbar {
   width: 10px; /* Set the width of the scrollbar */
   
 }
@@ -50,7 +50,7 @@ button:hover {
   overflow-x: hidden;
 }
 /* For WebKit browsers (Chrome, Safari, newer Edge) */
-#message-container::-webkit-scrollbar, #friendsAndGroups::-webkit-scrollbar, #users::-webkit-scrollbar, #scrolledFriends::-webkit-scrollbar {
+#message-container::-webkit-scrollbar, #friendsContainer::-webkit-scrollbar, #users::-webkit-scrollbar {
   width: 10px; /* Set the width of the scrollbar */
   
 }
@@ -67,8 +67,7 @@ button:hover {
     display: flex;
     align-items: center; /* Center vertically */
     justify-content: center; /* Center horizontally */
-    /* margin: 10px 0;  */
-    margin-top: 10px;
+    margin: 10px 0; /* Add space between user entries */
 }
 
 .profile-container {
@@ -117,7 +116,7 @@ button:hover {
     display: flex;
     flex-direction: column; /* Stack username and buttons vertically */
     /* align-items: center; Center buttons horizontally */
-    /* width: 100px; */
+    width: 100px;
     margin-left: 10px;
 }
 
@@ -130,13 +129,13 @@ button:hover {
 
 
 /* Scrollbar thumb */
-#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #friendsAndGroups::-webkit-scrollbar-thumb, #scrolledFriends::-webkit-scrollbar-thumb {
+#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #friendsContainer::-webkit-scrollbar-thumb {
   background-color: darkgray; /* Color of the scrollbar thumb */
   
 }
 
 /* Scrollbar track */
-#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #friendsAndGroups::-webkit-scrollbar-track, #scrolledFriends::-webkit-scrollbar-track {
+#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #friendsContainer::-webkit-scrollbar-track {
   background: transparent; /* Background of the scrollbar track */
 }
 
@@ -147,7 +146,7 @@ button:hover {
 }
 
 /* For Internet Explorer and Edge (legacy) */
-#message-container, #users, #searchUsers, #friendsAndGroups, #scrolledFriends {
+#message-container, #users, #searchUsers, #friendsContainer {
   -ms-overflow-style: scrollbar; /* Sets the scrollbar to be visible */
 }
 @font-face {
@@ -634,18 +633,18 @@ h1 a {
 
 
 /* Scrollbar thumb */
-#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #friendsAndGroups::-webkit-scrollbar-thumb,  #scrolledFriends::-webkit-scrollbar-thumb {
+#message-container::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb, #friendsContainer::-webkit-scrollbar-thumb {
   background-color: darkgray; /* Color of the scrollbar thumb */
   
 }
 
 /* Scrollbar track */
-#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #friendsAndGroups::-webkit-scrollbar-track, #scrolledFriends::-webkit-scrollbar-track {
+#message-container::-webkit-scrollbar-track, #users::-webkit-scrollbar-track, #friendsContainer::-webkit-scrollbar-track {
   background: transparent; /* Background of the scrollbar track */
 }
 
 /* For Firefox */
-#message-container, #users, #searchUsers, #friendsAndGroups, #scrolledFriends {
+#message-container, #users, #searchUsers, #friendsContainer {
   scrollbar-width: thin; /* Sets the scrollbar to be thin (default option) */
   scrollbar-color: darkgray transparent; /* Color of the scrollbar thumb and track */
   overflow-y: auto;
@@ -653,7 +652,7 @@ h1 a {
 }
 
 /* For Internet Explorer and Edge (legacy) */
-#message-container, #users, #searchUsers, #friendsAndGroups, #scrolledFriends {
+#message-container, #users, #searchUsers, #friendsContainer {
   -ms-overflow-style: scrollbar; /* Sets the scrollbar to be visible */
   flex-wrap: nowrap;
   display: flex;
@@ -855,25 +854,16 @@ h1 a {
   background: rgb(4,13,37);
   background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
-/* #friendsContainer {
-  height: 96%;
-  overflow: hidden;
-  scrollbar-gutter: stable;
-  
-} */
-#friendsAndGroups {
+#friendsContainer {
   height: 96%;
   overflow: hidden;
   scrollbar-gutter: stable;
   
 }
-#friendsAndGroups:hover {
+#friendsContainer:hover {
   
   
   overflow: auto;
-}
-#groupsContainer, #friendsContainer {
-  background-color: transparent;
 }
 #friends.move-left {
   left: +25vw; /* Move friends left by 25% of the viewport */
@@ -940,10 +930,7 @@ h1 a {
   display: flex; /* Show the modal */
   transform: translate(-50%, -50%) scale(1); /* Grow modal */
 }
-.modal {
-  max-height: 90vh;
-  min-width: 40vw;
-}
+
 .modal-content {
   background: rgb(63,94,251);
   background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%);
@@ -956,7 +943,6 @@ h1 a {
   flex-direction: column;
   align-content: center;
   align-items: center;
-  min-width: 40vw;
 }
 
 
@@ -967,11 +953,6 @@ h1 a {
 .modalButtons {
   display: inline-block;
   margin: 0 auto;
-}
-#scrolledFriends {
-  overflow: auto;
-  max-height: 50vh;
-  width: 40vw;
 }
 input[type="radio"], input[type="checkbox"] {
   appearance: none;
