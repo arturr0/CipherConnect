@@ -106,10 +106,8 @@ db.serialize(() => {
         password TEXT,
         socketId TEXT,
         receiver INTEGER,
-        groupRec INTEGER, 
         profileImage BLOB,
-        FOREIGN KEY (receiver) REFERENCES users(id),
-        FOREIGN KEY (groupRec) REFERENCES groups(id)
+        FOREIGN KEY (receiver) REFERENCES users(id)
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS messages (
@@ -123,18 +121,8 @@ db.serialize(() => {
         FOREIGN KEY (senderId) REFERENCES users(id),
         FOREIGN KEY (recId) REFERENCES users(id)
     );`);
+    
 
-    db.run(`CREATE TABLE IF NOT EXISTS GroupMessages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        senderId INTEGER,
-        OffLineRecId INTEGER,
-        message TEXT,
-        read INTEGER NOT NULL,
-        sendTime TEXT NOT NULL,
-        toDelete INTEGER DEFAULT 0, 
-        FOREIGN KEY (senderId) REFERENCES users(id),
-        FOREIGN KEY (OffLineRecId) REFERENCES users(id)
-    );`);
 
     db.run(`CREATE TABLE IF NOT EXISTS blocked (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,7 +144,6 @@ db.serialize(() => {
             console.error('Error creating friends table:', err);
         }
     });
-
     db.run(`CREATE TABLE IF NOT EXISTS groups (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         creator INTEGER,
@@ -164,7 +151,6 @@ db.serialize(() => {
         avatar BLOB,
         FOREIGN KEY (creator) REFERENCES users(id)
     );`);
-
     db.run(`CREATE TABLE IF NOT EXISTS groupInvite (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         inviting INTEGER,
@@ -177,8 +163,8 @@ db.serialize(() => {
         FOREIGN KEY (inviting) REFERENCES users(id),
         FOREIGN KEY (invited) REFERENCES users(id)
     );`);
-}); 
-
+    
+});
 
 
 
@@ -543,7 +529,7 @@ socket.on('sendMeMessages', (username, receiver) => {
         });
     });
     
-    socket.on('login', (username) => {
+    socket.on('login', (username) => { 
         db.get('SELECT id, profileImage FROM users WHERE username = ?', [username], (err, user) => {
             if (err || !user) {
                 console.error('User not found:', username);
@@ -556,7 +542,7 @@ socket.on('sendMeMessages', (username, receiver) => {
                     console.error('Error updating socket ID:', err);
                     return;
                 }
-    
+                
                 // Emit the friends list to the logged-in user
                 fetchFriends(user.id, (friends) => {
                     io.to(socket.id).emit('friendsList', friends); // Send list to logged-in user
@@ -564,14 +550,16 @@ socket.on('sendMeMessages', (username, receiver) => {
                     // Notify each friend about their updated friend list
                     friends.forEach(friend => {
                         if (friend.socketId) {
+                            // Fetch the updated list of the friend's friends
                             fetchFriends(friend.id, (updatedFriendsList) => {
+                                // Send the updated friend list to the friend
                                 io.to(friend.socketId).emit('friendsList', updatedFriendsList);
                             });
                         }
                     });
                 });
     
-                // Fetch user info including updated socketId
+                // Fetch the user again after socketId is updated
                 db.get('SELECT id, profileImage FROM users WHERE socketId = ?', [socket.id], (err, updatedUser) => {
                     if (err || !updatedUser) {
                         console.error('Updated user not found:', err);
@@ -595,6 +583,7 @@ socket.on('sendMeMessages', (username, receiver) => {
                             return;
                         }
     
+                        // Process and send pending invitations
                         const pendingInvitations = rows.map(row => ({
                             username: row.username,
                             invitingId: row.inviting
@@ -603,7 +592,7 @@ socket.on('sendMeMessages', (username, receiver) => {
                         io.to(socket.id).emit('pendingInvitations', pendingInvitations);
                     });
     
-                    // Fetch unread messages count
+                    // Count unread messages
                     db.all(`
                         SELECT senderId, COUNT(*) AS unreadCount 
                         FROM messages 
@@ -614,10 +603,12 @@ socket.on('sendMeMessages', (username, receiver) => {
                             return;
                         }
     
+                        // Fetch usernames for unread counts
                         const unreadWithUsernames = unreadCounts.map(count => {
                             return new Promise((resolve) => {
                                 db.get('SELECT username FROM users WHERE id = ?', [count.senderId], (err, sender) => {
                                     if (err || !sender) {
+                                        console.error('Error fetching sender username:', err);
                                         resolve({ username: null, unreadCount: count.unreadCount });
                                     } else {
                                         resolve({ username: sender.username, unreadCount: count.unreadCount });
@@ -626,10 +617,13 @@ socket.on('sendMeMessages', (username, receiver) => {
                             });
                         });
     
+                        // Resolve all promises to get usernames
                         Promise.all(unreadWithUsernames).then(results => {
+                            // Emit the unread message counts back to the client
                             io.to(socket.id).emit('unread message counts', results);
                         });
                     });
+                    // Fetch pending group invitations
                     db.all(`
                         SELECT u.username AS invitingUsername, gi.groupId, gi.groupName 
                         FROM groupInvite gi
@@ -651,65 +645,11 @@ socket.on('sendMeMessages', (username, receiver) => {
                         // Emit the pending group invitations to the logged-in user
                         io.to(socket.id).emit('groupInvites', pendingGroupInvites);
                     });
-                    // Fetch accepted group invitations with avatar and online status
-                    // Fetch accepted group invitations with avatar and online status
-                    db.all(`
-                        SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar,
-                            COUNT(u.socketId) > 0 AS online
-                        FROM groupInvite gi
-                        JOIN groups g ON gi.groupId = g.id
-                        LEFT JOIN users u ON u.id != ? AND u.socketId IS NOT NULL 
-                        WHERE gi.invited = ? AND gi.accepted = 1
-                        GROUP BY g.id`, [updatedUser.id, updatedUser.id], (err, groupInvites) => {
-                        if (err) {
-                            console.error('Error fetching accepted group invitations:', err);
-                            return;
-                        }
 
-    // Map accepted group invites to desired format
-    const acceptedGroupInvites = groupInvites.map(invite => ({
-        groupId: invite.groupId,
-        groupName: invite.groupName,
-        groupAvatar: invite.groupAvatar || null,
-        online: invite.online // Online status calculated correctly
-    }));
-
-    // Emit accepted group invites to the user
-    io.to(socket.id).emit('acceptedGroupInvites', acceptedGroupInvites);
-});
-
-    
-                    // Fetch and join accepted groups
-                    db.all(`
-                        SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
-                        FROM groupInvite gi
-                        JOIN groups g ON gi.groupId = g.id
-                        WHERE gi.invited = ? AND gi.accepted = 1
-                    `, [updatedUser.id], (err, groupInvites) => {
-                        if (err) {
-                            console.error('Error fetching accepted groups:', err);
-                            return;
-                        }
-    
-                        const myGroups = groupInvites.map(invite => ({
-                            groupId: invite.groupId,
-                            groupName: invite.groupName,
-                            groupAvatar: invite.groupAvatar || null
-                        }));
-    
-                        myGroups.forEach(group => {
-                            socket.join(`${group.groupId}`); // Join the group room
-                            console.log(`User joined group room: ${group.groupId}`);
-                        });
-    
-                        io.to(socket.id).emit('joinedGroups', myGroups);
-                    });
                 });
             });
         });
     });
-    
-    
     socket.on('give me friends to group', (username) => { 
         db.get('SELECT id, profileImage FROM users WHERE username = ?', [username], (err, user) => {
             if (err || !user) {
@@ -1102,8 +1042,6 @@ socket.on('sendMeMessages', (username, receiver) => {
                 }
     
                 if (decision === true) {
-                    socket.join(invitingName);
-    
                     // If decision is true, update the invitation status to accepted
                     db.run(`UPDATE groupInvite SET accepted = 1 WHERE id = ?`, [row.id], (err) => {
                         if (err) {
@@ -1111,60 +1049,17 @@ socket.on('sendMeMessages', (username, receiver) => {
                             return;
                         }
     
-                        // Get group details
+                        // Send group details: name, avatar, and group id
                         db.get(`SELECT name, avatar FROM groups WHERE id = ?`, [invitingName], (err, group) => {
                             if (err) {
                                 console.error('Error retrieving group details:', err);
                                 return;
                             }
     
-                            // Check if any group members have a non-null socketId
-                            db.get(`SELECT COUNT(*) as onlineCount
-                                    FROM users u
-                                    JOIN groupInvite gi ON gi.invited = u.id
-                                    WHERE gi.groupId = ?
-                                    AND gi.accepted = 1
-                                    AND u.socketId IS NOT NULL`, 
-                                    [invitingName], (err, result) => {
-                                if (err) {
-                                    console.error('Error checking group member online status:', err);
-                                    return;
-                                }
-    
-                                const isOnline = result.onlineCount > 1 ? 1 : 0;  // Set 1 if any user is online
-    
-                                // Emit group details to the user who accepted the invite
-                                socket.emit('group confirmed', {
-                                    groupId: invitingName,
-                                    groupName: group.name,
-                                    groupAvatar: group.avatar,
-                                    lineStatus: isOnline  // Add lineStatus to the emitted data
-                                });
-    
-                                // Send the same group details to all accepted users in the group
-                                db.all(`SELECT u.socketId 
-                                    FROM users u 
-                                    JOIN groupInvite gi ON gi.invited = u.id 
-                                    WHERE gi.groupId = ? 
-                                    AND gi.accepted = 1 
-                                    AND gi.invited <> ?`,   // Exclude the current user
-                                    [invitingName, invitedUserId], 
-                                    (err, acceptedUsers) => {
-                                    if (err) {
-                                        console.error('Error retrieving accepted users:', err);
-                                        return;
-                                    }
-    
-                                    acceptedUsers.forEach(user => {
-                                        // Send group details to each accepted user
-                                        io.to(user.socketId).emit('group confirmed', {
-                                            groupId: invitingName,
-                                            groupName: group.name,
-                                            groupAvatar: group.avatar,
-                                            lineStatus: isOnline  // Include lineStatus
-                                        });
-                                    });
-                                });
+                            socket.emit('group confirmed', {
+                                groupId: invitingName,
+                                groupName: group.name,
+                                groupAvatar: group.avatar
                             });
                         });
                     });
@@ -1179,7 +1074,6 @@ socket.on('sendMeMessages', (username, receiver) => {
             });
         });
     });
-    
     
     
     socket.on('confirm invite', ({ decision, invitingName }) => {
@@ -1516,22 +1410,16 @@ socket.on('uploadImage', ({ imageData, fileType }) => {
 
 let isCreatingGroup = false; // Add a flag to track group creation state
 
-// Store the group creation status per user or socket
-const groupCreationStatus = new Map();  // A Map to track group creation status per socket ID
-
-socket.on('createGroup', ({ groupName, invited, username, avatar }) => { 
-    if (groupCreationStatus.get(socket.id)) {
-        console.log("Group creation already in progress, ignoring duplicate request.");
-        return;
+socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
+    if (isCreatingGroup) {
+        console.log("Group creation in progress, please wait.");
+        return; // Prevent further calls if a group is already being created
     }
-
-    groupCreationStatus.set(socket.id, true);
-    console.log(groupName, invited, username, avatar);
-
+    console.log(groupName, invited, username, avatar)
+    isCreatingGroup = true; // Set the flag to true when starting the group creation process
     const extension = avatar?.fileType?.split('/')[1];
     const validExtensions = ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'svg', 'webp'];
     let relativePath = null;
-
     if (!avatar || !validExtensions.includes(extension)) {
         console.error('No valid file type provided! Setting avatar to null.');
         avatar = null; // Set avatar to null if invalid
@@ -1546,15 +1434,19 @@ socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
         fs.writeFile(filePath, base64Data, 'base64', (err) => {
             if (err) {
                 console.error('Error saving the image:', err);
+                isCreatingGroup = false; // Reset the flag
                 return;
             }
             console.log('Image saved successfully:', filePath);
             relativePath = `/uploads/${uniqueFileName}`;
+            
         });
     } else {
+        // If no avatar, proceed with a null value
         console.log('No valid avatar provided. Proceeding without an avatar.');
+        
     }
-
+    // Prepare SQL query and values
     let findUsersSQL;
     let queryValues;
 
@@ -1568,15 +1460,18 @@ socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
     }
 
     console.log("Fetching user IDs for invited users and creator.");
-    const userIds = {};
-    const socketIds = {};
 
     db.all(findUsersSQL, queryValues, (err, rows) => {
+        isCreatingGroup = false; // Reset the flag at the end of the operation
+
         if (err) {
             console.error("Error fetching user IDs:", err);
-            groupCreationStatus.delete(socket.id);  // Reset flag in case of error
             return;
         }
+
+        // User ID mapping
+        const userIds = {};
+        const socketIds = {};
 
         rows.forEach(row => {
             userIds[row.username] = row.id;
@@ -1587,7 +1482,6 @@ socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
 
         if (!userIds[username]) {
             console.error("Creator not found in users table.");
-            groupCreationStatus.delete(socket.id);  // Reset flag in case of error
             return;
         }
 
@@ -1595,7 +1489,7 @@ socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
 
         if (allUserIds.length > 1) {
             const placeholders = allUserIds.map(() => '?').join(',');
-            const blockCheckSQL = `SELECT blocker, blocked FROM blocked WHERE 
+            const blockCheckSQL = `SELECT blocker FROM blocked WHERE 
                 blocker IN (${placeholders}) OR blocked IN (${placeholders})`;
 
             console.log("Checking for block relationships.");
@@ -1603,126 +1497,76 @@ socket.on('createGroup', ({ groupName, invited, username, avatar }) => {
             db.all(blockCheckSQL, [...allUserIds, ...allUserIds], (err, blockRows) => {
                 if (err) {
                     console.error("Error checking block status:", err);
-                    groupCreationStatus.delete(socket.id);  // Reset flag in case of error
                     return;
                 }
 
-                const blockedUsers = new Map();
+                const blockedUsers = new Set();
                 blockRows.forEach(blockRow => {
-                    if (!blockedUsers.has(blockRow.blocker)) {
-                        blockedUsers.set(blockRow.blocker, new Set());
-                    }
-                    blockedUsers.get(blockRow.blocker).add(blockRow.blocked);
+                    blockedUsers.add(blockRow.blocker); // Only consider blockers
                 });
 
-                console.log("Blocked users map: ", blockedUsers);
+                console.log("Blocked users: ", blockedUsers);
 
-                const validInvitedUsers = invited.filter(user => {
-                    const invitedUserId = userIds[user]; // Get the ID for the invited user
-                    const blockerId = userIds[username]; // Get the ID for the blocker (the creator)
-                
-                    // Debugging output
-                    console.log(`Checking user ${user} (ID: ${invitedUserId}) against blocker ${username} (ID: ${blockerId})`);
-                
-                    // Ensure both IDs are valid
-                    if (invitedUserId && blockerId) {
-                        // Check if the blocker has blocked this invited user
-                        if (blockedUsers.has(blockerId)) {
-                            const isBlockedByBlocker = blockedUsers.get(blockerId).has(invitedUserId);
-                            console.log(`User ${user} is blocked by blocker ${username}: ${isBlockedByBlocker}`);
-                
-                            // Exclude the user if they are blocked by the blocker
-                            if (isBlockedByBlocker) return false;
-                        }
-                
-                        // Check if the invited user is blocked by any other invited users
-                        for (const otherUser of invited) {
-                            if (otherUser !== user) { // Skip self-comparison
-                                const otherUserId = userIds[otherUser];
-                
-                                // Check if this user has blocked the other invited user
-                                if (blockedUsers.has(invitedUserId) && blockedUsers.get(invitedUserId).has(otherUserId)) {
-                                    console.log(`User ${user} is blocked by invited user ${otherUser}`);
-                                    return false; // Exclude this user if blocked by another invited user
-                                }
-                            }
-                        }
-                    }
-                
-                    // Include the user if they are not blocked by the blocker or other invited users
-                    return true; 
-                });
-                
-                console.log("Valid invited users after block filter: ", validInvitedUsers);
-                
-                console.log("Valid invited users after block filter: ", validInvitedUsers);
-                
-                console.log("Valid invited users after block filter: ", validInvitedUsers);
-                
-                
-                console.log("Valid invited users after block filter: ", validInvitedUsers);
-                
+                // Filter out only those users who have blocked the creator
+                const validInvitedUsers = invited.filter(user => !blockedUsers.has(userIds[user]));
                 console.log("Valid invited users after block filter: ", validInvitedUsers);
 
-                createGroup(validInvitedUsers, relativePath, userIds); // Pass userIds to createGroup
+                createGroup(validInvitedUsers, relativePath);
             });
         } else {
             console.log("No invited users or block-check not needed, proceeding to group creation.");
-            createGroup(invited, relativePath, userIds); // Pass userIds to createGroup
-        }
-    });
-
-    function createGroup(validInvitedUsers, relativePath, userIds) {
-        if (!validInvitedUsers || validInvitedUsers.length === 0) {
-            console.log("No valid invited users to add, only creating the group for the creator.");
+            createGroup(invited);
         }
 
-        const insertGroupSQL = `INSERT INTO groups (creator, name, avatar) VALUES (?, ?, ?)`;
-        db.run(insertGroupSQL, [userIds[username], groupName, relativePath], function (err) {
-            if (err) {
-                console.error("Error inserting group:", err);
-                groupCreationStatus.delete(socket.id);  // Reset flag in case of error
-                return;
+        // Define the createGroup function
+        function createGroup(validInvitedUsers, relativePath) {
+            if (!validInvitedUsers || validInvitedUsers.length === 0) {
+                console.log("No valid invited users to add, only creating the group for the creator.");
             }
 
-            const groupId = this.lastID;
-            console.log("Group created with ID: ", groupId);
+            const insertGroupSQL = `INSERT INTO groups (creator, name, avatar) VALUES (?, ?, ?)`;
+            db.run(insertGroupSQL, [userIds[username], groupName, relativePath], function(err) {
+                if (err) {
+                    console.error("Error inserting group:", err);
+                    return;
+                }
 
-            const insertInviteSQL = `INSERT INTO groupInvite (inviting, invited, groupId, groupName, accepted) VALUES (?, ?, ?, ?, ?)`;
+                const groupId = this.lastID;
 
-            validInvitedUsers.forEach(invitedUser => {
-                db.run(insertInviteSQL, [userIds[username], userIds[invitedUser], groupId, groupName, 0], err => {
-                    if (err) {
-                        console.error(`Error inviting user ${invitedUser}:`, err);
-                    } else {
-                        const invitedSocketId = socketIds[invitedUser];
-                        if (invitedSocketId) {
-                            io.to(invitedSocketId).emit('groupInvite', {
-                                groupId,
-                                groupName,
-                                creator: username
-                            });
-                            console.log(`Invite sent to ${invitedUser}.`);
+                console.log("Group created with ID: ", groupId);
+
+                const insertInviteSQL = `INSERT INTO groupInvite (inviting, invited, groupId, groupName, accepted) VALUES (?, ?, ?, ?, ?)`;
+
+                validInvitedUsers.forEach(invitedUser => {
+                    db.run(insertInviteSQL, [userIds[username], userIds[invitedUser], groupId, groupName, 0], err => {
+                        if (err) {
+                            console.error(`Error inviting user ${invitedUser}:`, err);
+                        } else {
+                            const invitedSocketId = socketIds[invitedUser];
+                            if (invitedSocketId) {
+                                io.to(invitedSocketId).emit('groupInvite', {
+                                    groupId,
+                                    groupName,
+                                    creator: username
+                                });
+                                console.log(`Invite sent to ${invitedUser}.`);
+                            }
                         }
+                    });
+                });
+
+                // Invite the creator
+                db.run(insertInviteSQL, [userIds[username], userIds[username], groupId, groupName, 1], err => {
+                    if (err) {
+                        console.error("Error inserting creator's invite:", err);
                     }
                 });
-            });
 
-            db.run(insertInviteSQL, [userIds[username], userIds[username], groupId, groupName, 1], err => {
-                if (err) {
-                    console.error("Error inserting creator's invite:", err);
-                } else {
-                    socket.join(`${groupId}`);
-                    console.log(`Creator ${username} joined group room: ${groupId}`);
-                }
+                socket.emit('groupCreated', { groupId, groupName });
             });
-
-            socket.emit('groupCreated', { groupId, groupName });
-            groupCreationStatus.delete(socket.id);
-        })
-    }
+        }
+    });
 });
-
 
 
 // Handle block event
@@ -1852,48 +1696,6 @@ socket.on('disconnect', () => {
             } else {
                 console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
 
-                // Fetch groups of the disconnected user
-                db.all(`
-                    SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
-                    FROM groupInvite gi
-                    JOIN groups g ON gi.groupId = g.id
-                    WHERE gi.invited = ? AND gi.accepted = 1
-                `, [disconnectedUserId], (err, groups) => {
-                    if (err) {
-                        console.error('Error fetching groups for disconnected user:', err);
-                        return;
-                    }
-
-                    // Find all users in those groups
-                    const groupIds = groups.map(group => group.groupId);
-                    if (groupIds.length === 0) return; // No groups to process
-
-                    const placeholders = groupIds.map(() => '?').join(',');
-                    db.all(`
-                        SELECT u.id AS userId, u.socketId, COUNT(u2.id) AS disconnectedCount
-                        FROM users u
-                        JOIN groupInvite gi ON gi.groupId IN (${placeholders})
-                        LEFT JOIN users u2 ON u2.socketId IS NULL AND gi.invited = u2.id
-                        WHERE gi.groupId IN (${placeholders}) AND u.socketId IS NOT NULL
-                        GROUP BY u.id
-                    `, [...groupIds, ...groupIds], (err, connectedUsers) => {
-                        if (err) {
-                            console.error('Error fetching connected users from groups:', err);
-                            return;
-                        }
-
-                        // Check if there is exactly one disconnected user in those groups
-                        const totalDisconnected = connectedUsers.reduce((count, user) => count + (user.disconnectedCount > 0 ? 1 : 0), 0);
-
-                        if (totalDisconnected === 1) {
-                            // Send groups to each connected user
-                            connectedUsers.forEach(user => {
-                                io.to(user.socketId).emit('disconnectedUserGroups', groups);
-                            });
-                        }
-                    });
-                });
-
                 // Fetch the friends of the disconnected user
                 fetchFriends(disconnectedUserId, (friends) => {
                     // Notify each friend about their updated friend list
@@ -1911,7 +1713,6 @@ socket.on('disconnect', () => {
         });
     });
 });
-
 
 // Helper function to fetch friends with username, profile image, and online status
 const fetchFriends = (userId, callback) => {
