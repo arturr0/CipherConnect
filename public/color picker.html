@@ -1,0 +1,74 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Picker Example</title>
+    <style>
+        #colorBox {
+            width: 200px;
+            height: 200px;
+            background-color: #ff0000;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <label for="colorPicker">Choose a color:</label>
+    <input type="color" id="colorPicker" value="#ff0000">
+
+    <div id="colorBox"></div>
+
+    <script>
+        const colorPicker = document.getElementById("colorPicker");
+        const colorBox = document.getElementById("colorBox");
+
+        // Listen for the color change event
+        colorPicker.addEventListener("input", function() {
+            // Change the background color of the div
+            colorBox.style.backgroundColor = colorPicker.value;
+        });
+    </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hide Color Picker Frame</title>
+    <style>
+        #colorBox {
+            width: 200px;
+            height: 200px;
+            background-color: #ff0000;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <label for="colorPicker">Choose a color:</label>
+    <input type="color" id="colorPicker" value="#ff0000">
+
+    <div id="colorBox"></div>
+
+    <script>
+        const colorPicker = document.getElementById("colorPicker");
+        const colorBox = document.getElementById("colorBox");
+
+        // Use the 'input' event to detect a color change as soon as the user picks a color
+        colorPicker.addEventListener("input", function() {
+            // Change the background color of the div
+            colorBox.style.backgroundColor = colorPicker.value;
+
+            // Use setTimeout to ensure blur happens after the input has registered
+            setTimeout(() => {
+                colorBox.style.display = 'none';  // Remove focus to hide the color picker frame
+            }, 0);
+        });
+    </script>
+</body>
+</html>
+
+
