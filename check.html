@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Listener Example</title>
+    <style>
+        #submitButton {
+            margin-top: 10px;
+            display: none; /* Initially hide the button */
+        }
+    </style>
+</head>
+<body>
+
+<input type="text" id="myInput" placeholder="Type something...">
+<button id="submitButton">ARRAY</button>
+<button id="arrayButton" onclick="updateArray()">ARRAY</button>
+<button id="emptyButton" onclick="emptyArray()">EMPTY</button>
+<p id="feedback"></p>
+
+<script>
+    // Example array to check length
+    let myArray = [];
+
+    // Select the input and button elements
+    const inputElement = document.getElementById('myInput');
+    const submitButton = document.getElementById('submitButton');
+    const feedback = document.getElementById('feedback');
+
+    // Function to check if both input is non-empty and array has items
+    function checkConditions() {
+        const inputValue = inputElement.value.trim(); // Trim spaces
+
+        // Check if input is not empty and array length is greater than 0
+        if (inputValue.length > 0 && myArray.length > 0) {
+            submitButton.style.display = 'block'; // Show the button
+            feedback.textContent = 'Ready to submit!';
+        } else {
+            submitButton.style.display = 'none'; // Hide the button
+            feedback.textContent = 'Input is not valid.';
+        }
+    }
+
+    // Event listener for typing in input
+    inputElement.addEventListener('input', checkConditions);
+
+    // Optional: Event to monitor changes to the array or other dynamic conditions
+    // For example, let's say the array changes dynamically
+    function updateArray() {
+        //myArray = newArray;
+        myArray = [1,2];
+        checkConditions(); // Re-check conditions when the array is updated
+    }
+    function emptyArray() {
+        myArray = [];
+        checkConditions();
+    }
+    // Simulating an array update after a delay (this could be triggered by other logic)
+    // setTimeout(() => {
+    //     updateArray(['item1', 'item2', 'item3']); // Array updated with new data
+    // }, 5000);
+</script>
+
+</body>
+</html>
