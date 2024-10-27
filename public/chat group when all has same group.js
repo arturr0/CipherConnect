@@ -22,12 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let group = null;
     let storeMessage = true;
     let avatar = null;
-    let newMessageCntr = 0;
     const cryptoDiv = document.getElementById("crypto");
     const originalWidth = cryptoDiv.offsetWidth;
     const dropdownContainer = document.querySelectorAll('.dropdown-content');
-    
-
     document.getElementById("group").addEventListener('click', () => {
         socket.emit('give me friends to group', username);
         const modal = document.getElementById('createGroup');
@@ -178,21 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Username emitted to server:', username);
     });
     
-    socket.on('unreadGroupMessageCounts', (data) => {
-        
-        console.log(data);
-        data.forEach(newMessage => {
-            const unreadMessage = document.createElement('div');
-            unreadMessage.classList.add('unreadMessages');
-            unreadMessage.setAttribute('value', `${newMessage.unreadCount}`);
-            unreadMessage.setAttribute('group', newMessage.groupId); // Set data-username for this user
-            unreadMessage.textContent = `${newMessage.groupName} ${newMessage.unreadCount}`;
-            document.getElementById("messagesContent").appendChild(unreadMessage);
-            newMessageCntr += newMessage.unreadCount// Set initial value to 1    
-        });
-        messCounter.setAttribute('value', newMessageCntr);
-        messCounter.textContent = newMessageCntr;
-    });
     socket.on('send group message', (data) => {
         
         console.log(data);
@@ -245,151 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Scroll to the bottom of the chat
             jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);    
         }
-        else {
-            let existingMessage = document.querySelector(`.unreadMessages[group="${data.groupOfMessage}"]`);
-
-    // Check if the user's unread message div already exists
-            if (!existingMessage) {
-                // Create a new unread message div for the specific user
-                const unreadMessage = document.createElement('div');
-                unreadMessage.classList.add('unreadMessages');
-                unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-                unreadMessage.setAttribute('group', data.groupOfMessage); // Set data-username for this user
-                unreadMessage.textContent = `${data.groupName} 1`; // Display initial unread count
-
-                // Append to the messages content
-                document.getElementById("messagesContent").appendChild(unreadMessage);
-            } else {
-                // If the element exists, update its value
-                let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-                currentValue++; // Increment the value
-
-                // Set the new value and update displayed text
-                existingMessage.setAttribute('value', currentValue);
-                existingMessage.textContent = `${data.groupName} ${currentValue}`;
-            }
-
-            // Update the overall message counter
-            let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-            messageValue++;
-            console.log(messageValue);
-            messCounter.setAttribute('value', messageValue);
-            messCounter.textContent = messageValue;    
-        }
-    });
-    
-    socket.on('groupMessages', (data) => {
-        const { messages, groupAvatar, groupName } = data;
-        console.log(data);
-        receiverElement.textContent = groupName;
-    // Clear existing content in #receiverAvatar
-        receiverAvatar.innerHTML = ''; 
-        
-        if (groupAvatar) {
-        // Check for the presence of an img element
-            const img = document.createElement('img');
-            img.id = 'receiverAvatar';
-            img.src = groupAvatar;
-            receiverAvatar.appendChild(img);
-        
-        }
-        else {
-            const initials = document.createElement('div');
-            initials.id = 'receiverInitials';
-            initials.textContent = groupName.charAt(0).toUpperCase();
-            receiverAvatar.appendChild(initials);
-        }
-                        
-        chat.innerHTML = '';
-
-        messages.forEach(message => {
-            
-            if (message.senderName != username) {
-                adjustMarginForScrollbar();
-
-        // Create a div element for the message bubble
-                const recDiv = document.createElement('div');
-                recDiv.classList.add('bubble', 'right');
-                recDiv.style.wordBreak = 'break-word';
-                recDiv.textContent = '';
-
-    // Create and add sender text
-                const senderText = document.createElement('span');
-                senderText.textContent = `${message.senderName}:`;
-                recDiv.appendChild(senderText);
-
-                // Add line break
-                recDiv.appendChild(document.createElement('br'));
-
-                // Create and add message text
-                const messageText = document.createElement('span');
-                messageText.textContent = message.message;
-                recDiv.appendChild(messageText);
-                const timeAndIcon = document.createElement('div');
-                timeAndIcon.classList.add('timeAndIcon');
-                timeAndIcon.style.display = 'flex';
-                timeAndIcon.style.marginRight = 'auto';
-                // Create a paragraph element for the date
-                const dateParagraph = document.createElement('p');
-                dateParagraph.textContent = formatDateComparison(message.sendTime);  // Format and add the date
-                dateParagraph.style.marginBottom = '0';
-                // Append the date paragraph to the message div
-                timeAndIcon.appendChild(dateParagraph);
-                if (message.store == 1) {
-                    const cryptoIcon = document.createElement('i');
-                    cryptoIcon.classList.add('icon-user-secret');
-                    
-                    cryptoIcon.style.marginTop = 'auto';
-                    cryptoIcon.style.marginLeft = '3px';
-                    timeAndIcon.appendChild(cryptoIcon);    
-                }
-                
-        
-                recDiv.appendChild(timeAndIcon);
-
-                // Append the message div to the chat container
-                chat.appendChild(recDiv);
-
-                // Scroll to the bottom of the chat
-                jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-            }
-            else {
-                const sendDiv = document.createElement('div');
-                sendDiv.classList.add('bubble', 'left');
-                sendDiv.style.wordBreak = 'break-word';
-                sendDiv.textContent = message.message;  // Add the message text
-                const timeAndIcon = document.createElement('div');
-                timeAndIcon.classList.add('timeAndIcon');
-                timeAndIcon.style.display = 'flex';
-                timeAndIcon.style.marginLeft = 'auto';
-                // Create a paragraph element for the date
-                const dateParagraph = document.createElement('p');
-                dateParagraph.textContent = `${formatDateComparison(message.sendTime)}`;
-                dateParagraph.style.marginBottom = '0';
-                dateParagraph.style.textAlign = 'right';
-                if(message.store == 1) {
-                    const cryptoIcon = document.createElement('i');
-                    cryptoIcon.classList.add('icon-user-secret');
-                    cryptoIcon.style.marginRight = '3px';
-                    cryptoIcon.style.marginTop = 'auto';
-                    timeAndIcon.appendChild(cryptoIcon);    
-                }
-                timeAndIcon.appendChild(dateParagraph);
-                sendDiv.appendChild(timeAndIcon);
-                // Append the date paragraph to the message div
-                //sendDiv.appendChild(dateParagraph);
-                chat.appendChild(sendDiv);
-                
-                
-                
-                
-                adjustMarginForScrollbar();
-                jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-
-            }    
-            
-        });
-
     });
     socket.on('disconnectedUserGroups', (data) => {
         
@@ -532,18 +369,17 @@ document.addEventListener('DOMContentLoaded', () => {
             userDiv.appendChild(userInfoDiv);
             fragment.appendChild(userDiv);
             //userDiv.appendChild(sendButton);  // Append send button
-            const sendButtons = document.querySelectorAll('.send');
+        
             sendButton.addEventListener('click', async () => {
                 groupName = sendButton.dataset.groupName;
                 group = sendButton.dataset.groupId;
                 receiver = '';
                 // Emit findUsers without awaiting the response
                 //socket.emit('findUsers', searchUser); // This might be adjusted based on your logic
-                const groupId = group;
-                //socket.emit('group selected', username, group);
-                socket.emit('requestGroupMessages', groupId);
+                
+                socket.emit('group selected', username, group);
                 // Assume that the server will respond with found users
-                console.log("click", groupId);
+                
                     
                     
                         receiverElement.textContent = groupName;
@@ -576,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             
                 // Select all elements with the class 'send'
-    
+    const sendButtons = document.querySelectorAll('.send');
     
                 
                 blockButton.addEventListener('click', () => {
@@ -633,7 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
         groupsContainer.appendChild(fragment);
 }
     });
-    
     socket.on('groupInvites', (data) => {
         console.log(data);
         data.forEach(invite => {
@@ -1161,7 +996,7 @@ function loadImageAsync(imageUrl) {
         friendsContainer.appendChild(fragment);
     });
     socket.on('unread message counts', (unreadCounts) => {
-        
+        let newMessageCntr = 0;
         unreadCounts.forEach(newMessage => {
             const unreadMessage = document.createElement('div');
             unreadMessage.classList.add('unreadMessages');
@@ -1302,43 +1137,41 @@ function loadImageAsync(imageUrl) {
             //userDiv.appendChild(sendButton);  // Append send button
         
             sendButton.addEventListener('click', async () => {
-                // receiver = '';
-                const groupId = sendButton.dataset.groupId;
-                socket.emit('requestGroupMessages', groupId);
-                // group = sendButton.dataset.groupId;
-                // groupName = sendButton.dataset.groupName;
-                // socket.emit('group selected', username, group);
-                // // Emit findUsers without awaiting the response
-                // //socket.emit('findUsers', searchUser); // This might be adjusted based on your logic
+                receiver = '';
+                group = sendButton.dataset.groupId;
+                groupName = sendButton.dataset.groupName;
+                socket.emit('group selected', username, group);
+                // Emit findUsers without awaiting the response
+                //socket.emit('findUsers', searchUser); // This might be adjusted based on your logic
     
-                // // Assume that the server will respond with found users
+                // Assume that the server will respond with found users
                 
-                // console.log('click');    
                     
-                //         receiverElement.textContent = groupName;
+                    
+                        receiverElement.textContent = groupName;
     
-                //         // Clear existing content in #receiverAvatar
-                //         receiverAvatar.innerHTML = ''; 
-                //         const profileContainer = userDiv.querySelector('.profile-container');
+                        // Clear existing content in #receiverAvatar
+                        receiverAvatar.innerHTML = ''; 
+                        const profileContainer = userDiv.querySelector('.profile-container');
     
-                //         // Check for the presence of an img element
-                //         const img = profileContainer.querySelector('img.profile-image');
-                //         const initialsElement = profileContainer.querySelector('.initials');
+                        // Check for the presence of an img element
+                        const img = profileContainer.querySelector('img.profile-image');
+                        const initialsElement = profileContainer.querySelector('.initials');
     
-                //         // Append the image or initials based on availability
-                //         if (img) {
-                //             const clonedImg = img.cloneNode();
-                //             clonedImg.classList.remove('profile-image');
-                //             clonedImg.id = 'receiverAvatar';
-                //             receiverAvatar.appendChild(clonedImg);
-                //         } else if (initialsElement) {
-                //             const clonedInitials = initialsElement.cloneNode(true);
-                //             clonedInitials.classList.remove('initials');
-                //             clonedInitials.id = 'receiverInitials';
-                //             receiverAvatar.appendChild(clonedInitials);
-                //         }
+                        // Append the image or initials based on availability
+                        if (img) {
+                            const clonedImg = img.cloneNode();
+                            clonedImg.classList.remove('profile-image');
+                            clonedImg.id = 'receiverAvatar';
+                            receiverAvatar.appendChild(clonedImg);
+                        } else if (initialsElement) {
+                            const clonedInitials = initialsElement.cloneNode(true);
+                            clonedInitials.classList.remove('initials');
+                            clonedInitials.id = 'receiverInitials';
+                            receiverAvatar.appendChild(clonedInitials);
+                        }
     
-                //         //socket.emit('sendMeMessages', username, receiver);
+                        //socket.emit('sendMeMessages', username, receiver);
                     
                 
             });
@@ -1868,41 +1701,52 @@ const messagesContent = document.getElementById("messagesContent");
 // });
 messagesContent.addEventListener('click', (event) => {
     const unreadMessage = event.target.closest('.unreadMessages');
-    if (!unreadMessage) return; // Stop if not an unread message
-
-    // Hide dropdown menu and reset after transition
-    const dropdownContent = document.querySelector('.dropdown-content');
-    dropdownContent.classList.add('hide');
-    dropdownContent.addEventListener('transitionend', function transitionEnd(event) {
-        if (event.propertyName === 'opacity') { // Ensure we're tracking the opacity transition
-            dropdownContent.classList.remove('hide');
-            unreadMessage.remove();
-            dropdownContent.removeEventListener('transitionend', transitionEnd); // Remove event listener after use
-        }
+    // Check if the clicked element is an unread message
+    document.querySelector('.dropdown-content').classList.add('hide');
+    document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
+        // Check which property has finished transitioning
+        document.querySelector('.dropdown-content').classList.remove('hide');
+        unreadMessage.remove();
     });
+   
+    
+    //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
+    
+    // Check if the user's unread message div already exists
+    
+        // Create a new unread message div for the specific user
+        
+        
 
-    // Update message counter
-    const currentValue = parseInt(unreadMessage.getAttribute('value'), 10) || 0;
-    const updatedCounter = (parseInt(messCounter.getAttribute('value'), 10) || 0) - currentValue;
+        // Append to the messages content
+        //document.getElementById("messagesContent").appendChild(unreadMessage);
+    
+        // If the element exists, update its value
+        const currentValue = parseInt(unreadMessage.getAttribute('value'), 10); // Default to 0 if NaN
+        const updatedCounter = parseInt(messCounter.getAttribute('value'), 10) - currentValue; // Increment the value
+
+        // Set the new value and update displayed text
+        // existingMessage.setAttribute('value', currentValue);
+        // existingMessage.textContent = `${user} ${currentValue}`;
+    
+
+    // Update the overall message counter
+    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
+    // messageValue++;
+    // console.log(messageValue);
     messCounter.setAttribute('value', updatedCounter);
     messCounter.textContent = updatedCounter;
+    if (unreadMessage) {
+        // Log the data-username attribute
+        // const username = unreadMessage.getAttribute('data-username');
+        console.log('Clicked username:', unreadMessage.getAttribute('data-username'));
 
-    // Check if the element has `data-username` or `group` attributes and handle accordingly
-    if (unreadMessage.hasAttribute('data-username')) {
-        receiver = unreadMessage.getAttribute('data-username');
-        console.log('Clicked username:', receiver);
-        
-        group = null;
+        // Emit the message request (assuming socket is defined)
+        receiver = unreadMessage.getAttribute('data-username'); // Use the user directly
+
         socket.emit('sendMeMessages', username, receiver);
-    } else if (unreadMessage.hasAttribute('group')) {
-        const groupId = unreadMessage.getAttribute('group');
-        console.log('Clicked group:', groupId);
-        receiver = '';
-        group = groupId;
-        socket.emit('requestGroupMessages', groupId);
     }
 });
-
 // Define the common function to handle clicks
 function confirmInvitation(contentType, event, emitType, cntr) {
     const element = event.target.closest('.invitation');
@@ -2109,26 +1953,47 @@ function adjustMarginForScrollbar() {
 
 socket.on('messagesResponse', (decryptedMessages) => {
     console.log(decryptedMessages);
+    //const chat = document.getElementById("chat");
     
-    receiverElement.textContent = receiver;
-    // Clear existing content in #receiverAvatar
-    receiverAvatar.innerHTML = ''; 
-    
-    if (decryptedMessages.profileImage) {
-    // Check for the presence of an img element
-        const img = document.createElement('img');
-        img.id = 'receiverAvatar';
-        img.src = decryptedMessages.profileImage;
-        receiverAvatar.appendChild(img);
-    
-    }
-    else {
-        const initials = document.createElement('div');
-        initials.id = 'receiverInitials';
-        initials.textContent = receiver.charAt(0).toUpperCase();
-        receiverAvatar.appendChild(initials);
-    }
+
+            // Emit findUsers without awaiting the response
+            
+
+            // Assume that the server will respond with found users
+            
+                
+                
                     
+                    receiverElement.textContent = receiver;
+                    // Clear existing content in #receiverAvatar
+                    receiverAvatar.innerHTML = ''; 
+                    
+                    if (decryptedMessages.profileImage) {
+                    // Check for the presence of an img element
+                        const img = document.createElement('img');
+                        img.id = 'receiverAvatar';
+                        img.src = decryptedMessages.profileImage;
+                        receiverAvatar.appendChild(img);
+                    
+                    }
+                    else {
+                        const initials = document.createElement('div');
+                        initials.id = 'receiverInitials';
+                        initials.textContent = receiver.charAt(0).toUpperCase();
+                        receiverAvatar.appendChild(initials);
+                    }
+                    // Create initials element but keep it hidden initially
+                    
+                    
+                    // Keep hidden initially
+                    
+
+                    // Append the image or initials based on availability
+                    
+
+                    
+                
+        
     chat.innerHTML = '';
     decryptedMessages.messages.forEach(message => {
         if (message.senderUsername == username) {
