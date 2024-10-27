@@ -25,8 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const cryptoDiv = document.getElementById("crypto");
     const originalWidth = cryptoDiv.offsetWidth;
     const dropdownContainer = document.querySelectorAll('.dropdown-content');
-    
-
     document.getElementById("group").addEventListener('click', () => {
         socket.emit('give me friends to group', username);
         const modal = document.getElementById('createGroup');
@@ -177,10 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Username emitted to server:', username);
     });
     
-    socket.on('unreadGroupMessageCounts', (data) => {
-        
-        console.log(data);
-    });
     socket.on('send group message', (data) => {
         
         console.log(data);
@@ -621,7 +615,6 @@ document.addEventListener('DOMContentLoaded', () => {
         groupsContainer.appendChild(fragment);
 }
     });
-    
     socket.on('groupInvites', (data) => {
         console.log(data);
         data.forEach(invite => {
@@ -1290,43 +1283,41 @@ function loadImageAsync(imageUrl) {
             //userDiv.appendChild(sendButton);  // Append send button
         
             sendButton.addEventListener('click', async () => {
-                // receiver = '';
-                const groupId = sendButton.dataset.groupId;
-                socket.emit('requestGroupMessages', groupId);
-                // group = sendButton.dataset.groupId;
-                // groupName = sendButton.dataset.groupName;
-                // socket.emit('group selected', username, group);
-                // // Emit findUsers without awaiting the response
-                // //socket.emit('findUsers', searchUser); // This might be adjusted based on your logic
+                receiver = '';
+                group = sendButton.dataset.groupId;
+                groupName = sendButton.dataset.groupName;
+                socket.emit('group selected', username, group);
+                // Emit findUsers without awaiting the response
+                //socket.emit('findUsers', searchUser); // This might be adjusted based on your logic
     
-                // // Assume that the server will respond with found users
+                // Assume that the server will respond with found users
                 
-                // console.log('click');    
                     
-                //         receiverElement.textContent = groupName;
+                    
+                        receiverElement.textContent = groupName;
     
-                //         // Clear existing content in #receiverAvatar
-                //         receiverAvatar.innerHTML = ''; 
-                //         const profileContainer = userDiv.querySelector('.profile-container');
+                        // Clear existing content in #receiverAvatar
+                        receiverAvatar.innerHTML = ''; 
+                        const profileContainer = userDiv.querySelector('.profile-container');
     
-                //         // Check for the presence of an img element
-                //         const img = profileContainer.querySelector('img.profile-image');
-                //         const initialsElement = profileContainer.querySelector('.initials');
+                        // Check for the presence of an img element
+                        const img = profileContainer.querySelector('img.profile-image');
+                        const initialsElement = profileContainer.querySelector('.initials');
     
-                //         // Append the image or initials based on availability
-                //         if (img) {
-                //             const clonedImg = img.cloneNode();
-                //             clonedImg.classList.remove('profile-image');
-                //             clonedImg.id = 'receiverAvatar';
-                //             receiverAvatar.appendChild(clonedImg);
-                //         } else if (initialsElement) {
-                //             const clonedInitials = initialsElement.cloneNode(true);
-                //             clonedInitials.classList.remove('initials');
-                //             clonedInitials.id = 'receiverInitials';
-                //             receiverAvatar.appendChild(clonedInitials);
-                //         }
+                        // Append the image or initials based on availability
+                        if (img) {
+                            const clonedImg = img.cloneNode();
+                            clonedImg.classList.remove('profile-image');
+                            clonedImg.id = 'receiverAvatar';
+                            receiverAvatar.appendChild(clonedImg);
+                        } else if (initialsElement) {
+                            const clonedInitials = initialsElement.cloneNode(true);
+                            clonedInitials.classList.remove('initials');
+                            clonedInitials.id = 'receiverInitials';
+                            receiverAvatar.appendChild(clonedInitials);
+                        }
     
-                //         //socket.emit('sendMeMessages', username, receiver);
+                        //socket.emit('sendMeMessages', username, receiver);
                     
                 
             });

@@ -64,39 +64,27 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 // Encryption/Decryption functions
-
-
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // Ensure it's a hex string
-const IV_LENGTH = 16; // AES block size
-
-if (ENCRYPTION_KEY.length !== 32) {
-    throw new Error("ENCRYPTION_KEY must be 32 bytes long.");
-}
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // Use Buffer to create key from hex
+const IV_LENGTH = 16; // For AES, this is always 16
 
 // Function to encrypt a message
 function encrypt(text) {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted; // Return IV + encrypted text
+    let iv = crypto.randomBytes(IV_LENGTH);
+    let cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex'); // Store IV with the encrypted message
 }
 
 // Function to decrypt a message
 function decrypt(text) {
-    const textParts = text.split(':');
-    const iv = Buffer.from(textParts.shift(), 'hex');
-    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-    
-    try {
-        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
-    } catch (error) {
-        console.error('Decryption failed:', error);
-        return null; // Return null or handle error as needed
-    }
+    let textParts = text.split(':');
+    let iv = Buffer.from(textParts.shift(), 'hex');
+    let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    let decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
 }
 
 
@@ -418,7 +406,99 @@ io.on('connection', (socket) => {
             });
         });
     });
-    
+    socket.on('requestGroupMessages', (groupId) => {
+        // Step 1: Find the sender's user ID and username based on socketId
+        db.get(`SELECT id, username FROM users WHERE socketId = ?`, [socket.id], (err, user) => {
+            if (err) {
+                console.error('Error finding sender ID:', err);
+                socket.emit('error', 'Error finding sender ID');
+                return;
+            }
+
+            if (!user) {
+                socket.emit('error', 'Sender not found.');
+                return;
+            }
+
+            const senderId = user.id;
+
+            // Step 2: Update receiver to NULL and groupRec to the sent groupId
+            db.run(`UPDATE users SET receiver = NULL, groupRec = ? WHERE id = ?`, [groupId, senderId], (err) => {
+                if (err) {
+                    console.error('Error updating user info:', err);
+                    socket.emit('error', 'Error updating user info');
+                    return;
+                }
+
+                // Step 3: Retrieve group messages where RecId matches senderId and groupRec matches the groupId in users table
+                db.all(`
+                    SELECT GroupMessages.id, GroupMessages.message, GroupMessages.sendTime, GroupMessages.read, users.username AS senderName
+                    FROM GroupMessages
+                    JOIN users ON GroupMessages.senderId = users.id
+                    WHERE GroupMessages.RecId = ? AND users.groupRec = ? AND GroupMessages.groupId = ?
+                `, [senderId, groupId, groupId], (err, messages) => {
+                    if (err) {
+                        console.error('Error retrieving group messages:', err);
+                        socket.emit('error', 'Error retrieving group messages');
+                        return;
+                    }
+
+                    // Format the messages for response
+                    const formattedMessages = messages.map(msg => ({
+                        message: msg.message,
+                        sendTime: msg.sendTime,
+                        senderName: msg.senderName
+                    }));
+
+                    // Step 4: Update unread messages (read = 0) to read (read = 1)
+                    const unreadMessageIds = messages
+                        .filter(msg => msg.read === 0)
+                        .map(msg => msg.id);
+
+                    if (unreadMessageIds.length > 0) {
+                        const placeholders = unreadMessageIds.map(() => '?').join(',');
+                        db.run(`UPDATE GroupMessages SET read = 1 WHERE id IN (${placeholders})`, unreadMessageIds, (err) => {
+                            if (err) {
+                                console.error('Error updating message read status:', err);
+                                socket.emit('error', 'Error updating message read status');
+                                return;
+                            }
+
+                            // Step 5: Send the array of messages to the client through the socket
+                            socket.emit('groupMessages', formattedMessages);
+
+                            // Step 6: Delete messages with toDelete = 1
+                            db.run(`DELETE FROM GroupMessages WHERE toDelete = 1 AND RecId = ? AND groupId = ?`, [senderId, groupId], (err) => {
+                                if (err) {
+                                    console.error('Error deleting messages marked for deletion:', err);
+                                }
+                            });
+                        });
+                    } else {
+                        // Send messages immediately if there are no unread messages to update
+                        socket.emit('groupMessages', formattedMessages);
+
+                        // Step 6: Delete messages with toDelete = 1
+                        db.run(`
+                            DELETE FROM GroupMessages 
+                            WHERE toDelete = 1 
+                            AND RecId = ? 
+                            AND EXISTS (
+                                SELECT 1 
+                                FROM users 
+                                WHERE users.id = GroupMessages.RecId 
+                                AND users.groupRec = ?
+                            )
+                        `, [senderId, groupId], (err) => {
+                            if (err) {
+                                console.error('Error deleting messages marked for deletion:', err);
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    });
     
     // socket.on('group message', ({ username, group, messageSent, storeMessage, sendTime }) => {
     //     // Fetch sender's ID
@@ -498,12 +578,6 @@ io.on('connection', (socket) => {
 
 socket.on('group message', ({ username, group, messageSent, storeMessage, sendTime }) => { 
     // Fetch sender's ID
-    const encryptedMessage = encrypt(messageSent);
-    // console.log(decrypt("mess", encryptedMessage));
-    if (typeof messageSent === 'string') {
-        console.log("string");
-    }
-    else console.log("not string");
     db.get(`SELECT id FROM users WHERE username = ?`, [username], (err, sender) => {
         if (err || !sender) {
             console.error("Sender not found or error:", err);
@@ -520,179 +594,76 @@ socket.on('group message', ({ username, group, messageSent, storeMessage, sendTi
             const groupName = groupInfo.name;
 
             // Fetch accepted group members
-            db.all(`SELECT invited AS recId FROM groupInvite WHERE groupId = ? AND accepted = 1`, [group], (err, members) => {
-                if (err) {
-                    console.error("Error fetching group members:", err);
-                    return;
-                }
-
-                members.forEach((member) => {
-                    const recId = member.recId;
-                     // Encrypt the message
-
-                    if (storeMessage) {
-                        // Check if the recipient has `groupRec` in users table matching `group`
-                        db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
-                            if (err) {
-                                console.error("Error checking user's group:", err);
-                                return;
-                            }
-
-                            // Store message in GroupMessages with proper read status
-                            db.run(`INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                                [
-                                    senderId, recId, encryptedMessage,
-                                    userInGroup ? 1 : 0, // Set `read` to 1 if the recipient is in the group
-                                    sendTime, 0,
-                                    group // `toDelete` set to 0 for group members
-                                ], (err) => {
-                                    if (err) console.error("Error storing message:", err);
-                                });
-                        });
-                    } else {
-                        // Only store if recipient does not have the group assigned
-                        db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
-                            if (err) {
-                                console.error("Error checking user's group:", err);
-                                return;
-                            }
-
-                            if (!userInGroup) {
-                                // Store message with `toDelete` set to 1 for non-group members
-                                db.run(`INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
-                                        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                                    [
-                                        senderId, recId, encryptedMessage,
-                                        0, sendTime, 1,
-                                        group // `read` = 0, `toDelete` = 1 since recipient lacks the group
-                                    ], (err) => {
-                                        if (err) console.error("Error setting toDelete:", err);
-                                    });
-                            }
-                            // If user is in the group, do not store the message.
-                        });
-                    }
-                });
-
-                // Emit the message including the group name
-                socket.to(group).emit('send group message', { 
-                    sender: username, 
-                    groupOfMessage: group, 
-                    groupName: groupName, // Include the group name here
-                    message: messageSent, // Use the original message for emitting
-                    store: storeMessage, 
-                    time: sendTime 
-                });
-            });
-        });
-    });
-});
-
-socket.on('requestGroupMessages', (groupId) => {
-    // Step 1: Find the sender's user ID and username based on socketId
-    db.get(`SELECT id, username FROM users WHERE socketId = ?`, [socket.id], (err, user) => {
-        if (err) {
-            console.error('Error finding sender ID:', err);
-            socket.emit('error', 'Error finding sender ID');
-            return;
-        }
-
-        if (!user) {
-            socket.emit('error', 'Sender not found.');
-            return;
-        }
-
-        const senderId = user.id;
-
-        // Step 2: Update receiver to NULL and groupRec to the sent groupId
-        db.run(`UPDATE users SET receiver = NULL, groupRec = ? WHERE id = ?`, [groupId, senderId], (err) => {
-            if (err) {
-                console.error('Error updating user info:', err);
-                socket.emit('error', 'Error updating user info');
-                return;
-            }
-
-            // Step 3: Retrieve the group avatar from the groups table
-            db.get(`SELECT avatar, name FROM groups WHERE id = ?`, [groupId], (err, group) => {
-                if (err) {
-                    console.error('Error retrieving group data:', err);
-                    socket.emit('error', 'Error retrieving group data');
-                    return;
-                }
-            
-                // Use group.avatar and group.name directly
-                const groupAvatar = group && group.avatar ? group.avatar : null;
-                const groupName = group.name;  // No conditional check needed for group name
-            
-                // Step 4: Retrieve group messages along with sender's name
-                db.all(`
-                    SELECT GroupMessages.id, GroupMessages.message, GroupMessages.sendTime, GroupMessages.read, GroupMessages.toDelete, 
-                           users.username AS senderName
-                    FROM GroupMessages
-                    JOIN users ON GroupMessages.senderId = users.id
-                    WHERE GroupMessages.RecId = ? AND users.groupRec = ? AND GroupMessages.groupId = ?`, 
-                [senderId, groupId, groupId], (err, messages) => {
+            db.all(`
+                SELECT invited AS recId 
+                FROM groupInvite 
+                WHERE groupId = ? AND accepted = 1`, [group], (err, members) => {
                     if (err) {
-                        console.error('Error retrieving group messages:', err);
-                        socket.emit('error', 'Error retrieving group messages');
+                        console.error("Error fetching group members:", err);
                         return;
                     }
-            
-                    // Format the messages to include decrypted content and sender name
-                    const formattedMessages = messages.map(msg => {
-                        try {
-                            const decryptedMessage = decrypt(msg.message);
-                            return {
-                                message: decryptedMessage,
-                                sendTime: msg.sendTime,
-                                senderName: msg.senderName,
-                                store: msg.toDelete
-                            };
-                        } catch (error) {
-                            console.error('Decryption error for message:', msg.message, error);
-                            return null;
-                        }
-                    }).filter(Boolean);
-            
-                    // Step 5: Update unread messages (read = 0) to read (read = 1)
-                    const unreadMessageIds = messages
-                        .filter(msg => msg.read === 0)
-                        .map(msg => msg.id);
-            
-                    if (unreadMessageIds.length > 0) {
-                        const placeholders = unreadMessageIds.map(() => '?').join(',');
-                        db.run(`UPDATE GroupMessages SET read = 1 WHERE id IN (${placeholders})`, unreadMessageIds, (err) => {
-                            if (err) {
-                                console.error('Error updating message read status:', err);
-                                socket.emit('error', 'Error updating message read status');
-                                return;
-                            }
-            
-                            // Step 6: Send both messages array, group avatar, and group name to the client
-                            socket.emit('groupMessages', { messages: formattedMessages, groupAvatar, groupName });
-            
-                            // Step 7: Delete messages with toDelete = 1
-                            db.run(`DELETE FROM GroupMessages WHERE toDelete = 1 AND RecId = ? AND groupId = ?`, [senderId, groupId], (err) => {
+
+                    members.forEach((member) => {
+                        const recId = member.recId;
+
+                        if (storeMessage) {
+                            // Check if the recipient has `groupRec` in users table matching `group`
+                            db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
                                 if (err) {
-                                    console.error('Error deleting messages marked for deletion:', err);
+                                    console.error("Error checking user's group:", err);
+                                    return;
                                 }
+
+                                db.run(`
+                                    INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                    [
+                                        senderId, recId, messageSent,
+                                        userInGroup ? 1 : 0, // Set `read` to 1 if the recipient is in the group
+                                        sendTime, 0,
+                                        group // `toDelete` set to 0 since the message is stored for group members
+                                    ], (err) => {
+                                        if (err) console.error("Error storing message:", err);
+                                    }
+                                );
                             });
-                        });
-                    } else {
-                        // Send messages immediately if there are no unread messages to update
-                        socket.emit('groupMessages', { messages: formattedMessages, groupAvatar, groupName });
-            
-                        // Step 7: Delete messages with toDelete = 1
-                        db.run(`DELETE FROM GroupMessages WHERE toDelete = 1 AND RecId = ? AND groupId = ?`, [senderId, groupId], (err) => {
-                            if (err) {
-                                console.error('Error deleting messages marked for deletion:', err);
-                            }
-                        });
-                    }
+                        } else {
+                            // `storeMessage` is false; only store if recipient does not have the group assigned
+                            db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
+                                if (err) {
+                                    console.error("Error checking user's group:", err);
+                                    return;
+                                }
+
+                                if (!userInGroup) {
+                                    // Store the message with `toDelete` set to 1 if the recipient is not in the group
+                                    db.run(`
+                                        INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
+                                        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                        [
+                                            senderId, recId, messageSent,
+                                            0, sendTime, 1,
+                                            group // `read` = 0, `toDelete` = 1 since recipient lacks the group
+                                        ], (err) => {
+                                            if (err) console.error("Error setting toDelete:", err);
+                                        }
+                                    );
+                                }
+                                // If user is in the group (`userInGroup` exists), do not store the message.
+                            });
+                        }
+                    });
+
+                    // Emit the message including the group name
+                    socket.to(group).emit('send group message', { 
+                        sender: username, 
+                        groupOfMessage: group, 
+                        groupName: groupName, // Include the group name here
+                        message: messageSent, 
+                        store: storeMessage, 
+                        time: sendTime 
+                    });
                 });
-            });
-            
         });
     });
 });
@@ -1010,30 +981,6 @@ socket.on('sendMeMessages', (username, receiver) => {
     
                         io.to(socket.id).emit('joinedGroups', myGroups);
                     });
-                    // Emit unread group message counts
-                    db.all(`
-                        SELECT g.id AS groupId, g.name AS groupName, COUNT(gm.id) AS unreadCount
-                        FROM GroupMessages gm
-                        JOIN groups g ON gm.groupId = g.id
-                        WHERE gm.RecId = ? AND gm.read = 0
-                        GROUP BY g.id
-                    `, [user.id], (err, unreadGroups) => {
-                        if (err) {
-                            console.error('Error fetching unread group messages count:', err);
-                            return;
-                        }
-
-                        // Structure the data to include group ID, group name, and unread message count
-                        const unreadGroupCounts = unreadGroups.map(group => ({
-                            groupId: group.groupId,
-                            groupName: group.groupName,
-                            unreadCount: group.unreadCount
-                        }));
-
-                        // Emit the unread group message counts to the user
-                        io.to(socket.id).emit('unreadGroupMessageCounts', unreadGroupCounts);
-                    });
-
                 });
             });
         });
