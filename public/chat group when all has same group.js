@@ -227,42 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Scroll to the bottom of the chat
             jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);    
         }
-        else {
-            let existingMessage = document.querySelector(`.unreadMessages[group="${data.groupOfMessage}"]`);
-
-    // Check if the user's unread message div already exists
-            if (!existingMessage) {
-                // Create a new unread message div for the specific user
-                const unreadMessage = document.createElement('div');
-                unreadMessage.classList.add('unreadMessages');
-                unreadMessage.setAttribute('value', '1'); // Set initial value to 1
-                unreadMessage.setAttribute('group', data.groupOfMessage); // Set data-username for this user
-                unreadMessage.textContent = `${data.groupName} 1`; // Display initial unread count
-
-                // Append to the messages content
-                document.getElementById("messagesContent").appendChild(unreadMessage);
-            } else {
-                // If the element exists, update its value
-                let currentValue = parseInt(existingMessage.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-                currentValue++; // Increment the value
-
-                // Set the new value and update displayed text
-                existingMessage.setAttribute('value', currentValue);
-                existingMessage.textContent = `${data.groupName} ${currentValue}`;
-            }
-
-            // Update the overall message counter
-            let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
-            messageValue++;
-            console.log(messageValue);
-            messCounter.setAttribute('value', messageValue);
-            messCounter.textContent = messageValue;    
-        }
-    });
-    
-    socket.on('groupMessages', (data) => {
-        
-        console.log(data);
     });
     socket.on('disconnectedUserGroups', (data) => {
         
@@ -1737,41 +1701,52 @@ const messagesContent = document.getElementById("messagesContent");
 // });
 messagesContent.addEventListener('click', (event) => {
     const unreadMessage = event.target.closest('.unreadMessages');
-    if (!unreadMessage) return; // Stop if not an unread message
-
-    // Hide dropdown menu and reset after transition
-    const dropdownContent = document.querySelector('.dropdown-content');
-    dropdownContent.classList.add('hide');
-    dropdownContent.addEventListener('transitionend', function transitionEnd(event) {
-        if (event.propertyName === 'opacity') { // Ensure we're tracking the opacity transition
-            dropdownContent.classList.remove('hide');
-            unreadMessage.remove();
-            dropdownContent.removeEventListener('transitionend', transitionEnd); // Remove event listener after use
-        }
+    // Check if the clicked element is an unread message
+    document.querySelector('.dropdown-content').classList.add('hide');
+    document.querySelector('.dropdown-content').addEventListener('transitionend', function(event) {
+        // Check which property has finished transitioning
+        document.querySelector('.dropdown-content').classList.remove('hide');
+        unreadMessage.remove();
     });
+   
+    
+    //let existingMessage = document.querySelector(`.unreadMessages[data-username="${user}"]`);
+    
+    // Check if the user's unread message div already exists
+    
+        // Create a new unread message div for the specific user
+        
+        
 
-    // Update message counter
-    const currentValue = parseInt(unreadMessage.getAttribute('value'), 10) || 0;
-    const updatedCounter = (parseInt(messCounter.getAttribute('value'), 10) || 0) - currentValue;
+        // Append to the messages content
+        //document.getElementById("messagesContent").appendChild(unreadMessage);
+    
+        // If the element exists, update its value
+        const currentValue = parseInt(unreadMessage.getAttribute('value'), 10); // Default to 0 if NaN
+        const updatedCounter = parseInt(messCounter.getAttribute('value'), 10) - currentValue; // Increment the value
+
+        // Set the new value and update displayed text
+        // existingMessage.setAttribute('value', currentValue);
+        // existingMessage.textContent = `${user} ${currentValue}`;
+    
+
+    // Update the overall message counter
+    // let messageValue = parseInt(messCounter.getAttribute('value'), 10) || 0; // Default to 0 if NaN
+    // messageValue++;
+    // console.log(messageValue);
     messCounter.setAttribute('value', updatedCounter);
     messCounter.textContent = updatedCounter;
+    if (unreadMessage) {
+        // Log the data-username attribute
+        // const username = unreadMessage.getAttribute('data-username');
+        console.log('Clicked username:', unreadMessage.getAttribute('data-username'));
 
-    // Check if the element has `data-username` or `group` attributes and handle accordingly
-    if (unreadMessage.hasAttribute('data-username')) {
-        receiver = unreadMessage.getAttribute('data-username');
-        console.log('Clicked username:', receiver);
-        
-        group = null;
+        // Emit the message request (assuming socket is defined)
+        receiver = unreadMessage.getAttribute('data-username'); // Use the user directly
+
         socket.emit('sendMeMessages', username, receiver);
-    } else if (unreadMessage.hasAttribute('group')) {
-        const groupId = unreadMessage.getAttribute('group');
-        console.log('Clicked group:', groupId);
-        receiver = '';
-        group = groupId;
-        socket.emit('requestGroupMessages', groupId);
     }
 });
-
 // Define the common function to handle clicks
 function confirmInvitation(contentType, event, emitType, cntr) {
     const element = event.target.closest('.invitation');
