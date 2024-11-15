@@ -5,7 +5,6 @@ html(lang='en')
         meta(name='viewport' content='width=device-width, initial-scale=1.0')
         title CipherConnect
         script(src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js')
-        script(src='http://localhost:35729/livereload.js')
         link(rel="shortcut icon" href="http://localhost:3000/chat2.ico")
         script(src='https://code.jquery.com/jquery-3.6.0.min.js')
         link(rel='preload' href='/css/fontello.css' as='style')
@@ -20,18 +19,20 @@ html(lang='en')
             }
     body
         div#mainContent
+            //- input(type="checkbox")
             #friendsSearchBg
             div#searchUsers
                     input#search-input(type='text', placeholder='Find User')
                     div#users
             #friends
+                #friendsAndGroups
                     #friendsContainer
-                        | FRIENDS
+                    #groupsContainer
             #menu
                 div#menuDiv
                     div#messagesNotRead.dropdown-container
                         #invitesDropdown.dropdownToggle
-                            div#messCounter(value="0").counter 0+
+                            div#messCounter(value="0").counter 0
                             i.icon-mail.menuIcon
                         #messagesContent.dropdown-content.dropdown(style="color: black;")
                             div a
@@ -46,6 +47,8 @@ html(lang='en')
                             div#groupCounter.counter(value="0") 0
                             i.icon-users.menuIcon
                         #groupsContent.dropdown-content.dropdown(style="color: black;")
+                            #group
+                                | CREATE GROUP
             div#chat_account
                 #chatContainer
                     #chat
@@ -65,10 +68,10 @@ html(lang='en')
                             | No Storing Messages
                             .icon-user-secret.accIon
                         .accountContentText
-                            label(for="fileInput" class="custom-file-label" style="color: inherit; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%;")
+                            label(for="userAvatar" class="custom-file-label" style="color: inherit; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%;")
                                 span Upload Avatar
                                 .icon-upload-1.accIon
-                            input(type="file" id="fileInput" accept="image/*" style="display: none")
+                            input(type="file" id="userAvatar" accept="image/*" style="display: none")
                         #logOut.accountContentText
                             | Log Out
                             .icon-off.accIon
@@ -81,9 +84,17 @@ html(lang='en')
             .modal#confirmModal
                 .modal-content
                     p#confirmText
-                    button#yesBtn Yes
-                    button#noBtn No
-                    button#cancelBtn Cancel
+                    .modalButtons
+                        button#yesBtn Yes
+                        button#noBtn No
+                        button#cancelBtn Cancel
+            .modal#createGroup
+                .modal-content
+                    p#groupMessage(style="font-size: 22px;")
+                    #friendsToGroup
+                    .modalButtons#groupBtns(style="display: flex;")
+                        button#sendGroup(type='button', disabled, style="display: none; opacity: 0.5;") Create Group
+                        button#cancelGroup Quit
         script(src='/chat.js' type='text/javascript')
         script.
             $(document).ready(function() {
