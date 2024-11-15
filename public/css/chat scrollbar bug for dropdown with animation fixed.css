@@ -69,7 +69,6 @@ button:hover {
     justify-content: center; /* Center horizontally */
     /* margin: 10px 0;  */
     margin-top: 10px;
-    position: relative;
 }
 
 .profile-container {
@@ -82,7 +81,7 @@ button:hover {
     margin-left: 10px;
 }
 .loading-placeholder, .initials, .profile-image {
-    position: relative; /* Allow overlap without layout shift */
+    position: absolute; /* Allow overlap without layout shift */
     top: 0; /* Align to the top */
     left: 0; /* Align to the left */
     width: 40px; /* Consistent width */
@@ -214,51 +213,36 @@ h1 a {
   width: 10vw;
 }
 /* Dropdown content styling */
-.dropdown-container .dropdown-content {
+.dropdown-content {
   position: absolute;
   width: 10vw;
   max-height: 0;
   overflow: hidden;
-  /* visibility: hidden; */
-  /* opacity: 0; */
-  /* transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; */
-  z-index: 20;
-  transition: max-height 0.7s ease;
+  visibility: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s;
+  z-index: 1;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: #0483c9;
 }
 
-/* Show dropdown on hover with smooth scroll down transition */
+/* Show dropdown on hover with smooth transition and delayed overflow */
 .dropdown-container:hover .dropdown-content {
   max-height: 200px;
   visibility: visible;
   opacity: 1;
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
   z-index: 20;
-  animation: setOverflow 0s ease 0.3s forwards;
+  animation: setOverflow 0s ease 0.3s forwards; /* Delay overflow change */
 }
 
-/* Animation to set overflow to auto after expand */
+/* Keyframes to change overflow after the transition */
 @keyframes setOverflow {
   to {
     overflow: auto;
   }
 }
 
-/* Smooth scroll up when not hovered */
-.dropdown-container .dropdown-content {
-  animation: hideOverflow 0s ease 0.3s forwards;
-}
-
-/* Keyframes to hide overflow after collapsing */
-@keyframes hideOverflow {
-  0% {
-    overflow: auto;
-  }
-  100% {
-    overflow: hidden;
-  }
-}
 
 .no-hover .dropdown-content {
   max-height: 0; /* Prevent max-height */
@@ -1034,13 +1018,4 @@ input[type="checkbox"]:checked + label::after {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-}
-.svg-circle {
-  width: 16px;      /* Controls the width of the SVG */
-  height: 16px;     /* Controls the height of the SVG */
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  transform: translate(20%, 20%);
-  z-index: 10;
 }
