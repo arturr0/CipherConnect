@@ -1,22 +1,212 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
 html, body {
     margin: 0; /* Remove default margin */
     padding: 0; /* Remove default padding */
     height: 100%; /* Ensure it takes up full height */
     /* overflow: hidden; Prevent scrollbars */
-    background: rgb(12, 163, 50);
+    /* background: rgb(4, 13, 37); */
     /* background: linear-gradient(0deg, rgba(4, 13, 37, 1) 40%, rgba(14, 51, 85, 1) 85%); */
+    font-family: 'Roboto', sans-serif;
+    /* background: linear-gradient(0deg, rgba(4, 13, 37, 1) 12%, rgba(23, 104, 112, 1) 85%); */
+    /* background: rgb(34,193,195);
+    background: linear-gradient(0deg, rgba(34,193,195,1) 1%, rgba(0,0,0,1) 37%); */
+    color: white;
+
+    
+    
+}
+h2 {
+    margin-top: 5%;
+    color: white;
+}
+.neonText {
+  color: #fff;
+  text-shadow:
+    0 0 7px #fff,
+    0 0 10px #fff,
+    0 0 21px #fff,
+    0 0 42px #0fa,
+    0 0 82px #0fa,
+    0 0 92px #0fa,
+    0 0 102px #0fa,
+    0 0 151px #0fa;
 }
 
+
+/* Additional styling */
+
+body {
+font-size: 18px;
+font-family: "Helvetica Neue", sans-serif;
+background-color: #010a01;
+}  
+
+/* h1, h2 {
+text-align: center;
+text-transform: uppercase;
+font-weight: 400;
+} */
+
+/* h1 {
+  font-size: 4.2rem;
+} */
+
+.pulsate {
+   animation: pulsate 1.5s infinite alternate;     
+}
+
+/* h2 {
+  font-size: 1.8rem;
+} */
+
+/* .container {
+margin-top: 20vh;
+} */
+
+@keyframes pulsate {
+  
+100% {
+
+    text-shadow:
+    0 0 4px #fff,
+    0 0 11px #fff,
+    0 0 19px #fff,
+    0 0 40px #0fa,
+    0 0 80px #0fa,
+    0 0 90px #0fa,
+    0 0 100px #0fa,
+    0 0 150px #0fa;
+
+}
+
+0% {
+
+  text-shadow:
+  0 0 2px #fff,
+  0 0 4px #fff,
+  0 0 6px #fff,
+  0 0 10px #0fa,
+  0 0 45px #0fa,
+  0 0 55px #0fa,
+  0 0 70px #0fa,
+  0 0 80px #0fa;
+
+}
+}
 .form-container {
     display: flex;
-    justify-content: center;
+    /* justify-content: center; */
     align-items: center;
     height: 100vh; /* Full viewport height for centering */
+    flex-direction: column;
 }
 
 #auth-form {
     background-color: white;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    /* border-radius: 8px; */
+    /* box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); */
+    /* background: rgb(63,94,251); */
+    /* background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%); */
+    /* background: linear-gradient(0deg, rgba(4, 13, 37, 1) 12%, rgba(23, 104, 112, 1) 85%); */
+    width: 37vw;
+    height: 45vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* box-shadow: 0 0 0 4px rgba(14, 83, 104, 0.5); X-offset, Y-offset, Blur, Spread, Color */
+    /* background-image: url('/lock.png'); /* Replace with your image path */
+    /* background-size: contain; Maintains the original aspect ratio */
+    /* background-position: center; */
+    /* background-repeat: no-repeat; */
+    background: rgb(1,10,1);
+    background: linear-gradient(0deg, rgba(1,10,1,1) 40%, rgba(50,137,172,1) 86%);
+    
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); /* uniform white shadow */
+    
+    font-weight: bolder;
+
+}
+#info {
+    height: 6vh;
+    width: 100%;
+    text-align: center;
+}
+input {
+    width: 15vw;
+    height: 5vh;
+    margin: 5px 0;
+
+}
+.characters {
+    width: 100%;
+    font-size: 1rem;
+}
+/* .chars {
+  font-size: 0.5rem;
+} */
+#buttons {
+    display: inline-block;
+    margin: 5px 0;
+}
+button {
+    color: #fff;
+    background-color: #38D2D2;
+    background-image: radial-gradient(93% 87% at 87% 89%, rgba(0, 0, 0, 0.23) 0%, transparent 86.18%), radial-gradient(66% 66% at 26% 20%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 69.79%, rgba(255, 255, 255, 0) 100%);
+    box-shadow: inset -3px -3px 9px rgba(255, 255, 255, 0.25), inset 0px 3px 9px rgba(255, 255, 255, 0.3), inset 0px 1px 1px rgba(255, 255, 255, 0.6), inset 0px -8px 36px rgba(0, 0, 0, 0.3), inset 0px 1px 5px rgba(255, 255, 255, 0.6), 2px 19px 31px rgba(0, 0, 0, 0.2);
+    border-radius: 14px;
+    /* font-weight: bold; */
+    border: 0;
+    user-select: none;
+    cursor: pointer;
+    /* padding: 5px; */
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+    width: 6vw;
+    height: 5vh;
+    color: black;
+    font-weight: bolder;
+    font-size: 15px;
+  }
+  button.buttons.active {
+    opacity: 1; /* Change background color on hover */
+}
+  button.buttons.active:hover {
+    opacity: 0.5; /* Change background color on hover */
+}
+.inactive {
+    opacity: 0.5;
+}
+  #loginInfo, #passwordInfo, .icons {
+    display: flex;
+  }
+  .icon-ok-circled2 {
+    display: none;
+    color: rgb(0,100,0);
+  }
+  .icon-cancel-circled2 {
+    color: red;
+  }
+  input::placeholder {
+    color: black; /* Set the desired color */
+    opacity: 1;  /* Optional: Ensure the color is fully opaque */
+}
+input{
+  text-align: center;  /* Centers the text and placeholder */
+  
+}
+i {
+  font-size: 20px;
+}
+p {
+  color: red;
+  margin: 0 3px 0 0; /* Top, Right, Bottom, Left */
+
+}
+.characters {
+  display: flex;
+  margin-top: 2px;
+  align-self: center;
 }
