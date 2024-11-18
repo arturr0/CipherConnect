@@ -1793,7 +1793,7 @@ socket.on('message', (data) => {
 
 function handleIncomingMessage(message) {
     adjustMarginForScrollbar();
-    document.getElementById('dots').remove();
+
     // Create a div element for the message bubble
     const recDiv = document.createElement('div');
     recDiv.classList.add('bubble', 'right');
@@ -2100,146 +2100,118 @@ socket.on("avatar", (relativePath) => {
     const currentUsername = localStorage.getItem('username'); // Get the current user's username
     document.getElementById("initials").textContent = currentUsername.charAt(0).toUpperCase();
     const messageInput = document.getElementById('message');
-let typingTimer;
-let typingDelay = 2000; // Set a delay for stopping typing event (in ms)
+    let typingTimer;
+    let typingDelay = 2000; // Set a delay for stopping typing event (in ms)
+    
+    
+    //const chatContainer = document.querySelector('.chat-container'); // Assuming your chat container is called chat-container
+    let typingIndicator = document.getElementById('typingIndicator');
 
-let typingIndicator = null; // To track the current typing indicator
-let typingBubble = null; // To track the current typing bubble
-
-// Handle input event for typing
-messageInput.addEventListener('input', () => {
-    console.log("type");
-    console.log(receiver);
-
-    // Ensure receiver is set before emitting typing event
-    if (receiver) {
-        socket.emit('typing', true, receiver); // Notify server that user is typing
-    }
-
-    // Clear the previous typing timer
-    clearTimeout(typingTimer);
-
-    // Set a new timer to emit typing stopped after delay
-    typingTimer = setTimeout(() => {
+    // Handle input event for typing
+    messageInput.addEventListener('input', () => {
+        console.log("type");
+        console.log(receiver);
+    
+        // Ensure receiver is set before emitting typing event
         if (receiver) {
-            socket.emit('typing', false, receiver); // Notify server that user stopped typing
+            socket.emit('typing', true, receiver); // Notify server that user is typing
         }
-    }, typingDelay);
-});
-
-// Listen for 'userTyping' event from the server
-socket.on('userTyping', ({ isTyping, sender }) => {
-    // Ensure sender matches the current receiver
-    if (sender === receiver) {
-        // Handle showing or hiding typing indicator
-        if (isTyping) {
-            console.log("typing show");
-            showTypingIndicator();
-        } else {
-            console.log("typing hide");
-            hideTypingIndicator();
+    
+        // Clear the previous typing timer
+        clearTimeout(typingTimer);
+    
+        // Set a new timer to emit typing stopped after delay
+        typingTimer = setTimeout(() => {
+            if (receiver) {
+                socket.emit('typing', false, receiver); // Notify server that user stopped typing
+            }
+        }, typingDelay);
+    });
+    
+    // Listen for 'userTyping' event from the server
+    socket.on('userTyping', ({ isTyping, sender }) => {
+        // Ensure sender matches the current receiver
+        if (sender === receiver) {
+            // Handle showing or hiding typing indicator
+            if (isTyping) {
+                console.log("typing show");
+                showTypingIndicator();
+            } else {
+                console.log("typing hide");
+                hideTypingIndicator();
+            }
+        }
+    });
+    
+    // Function to create typing indicator with dots animation
+    function createTypingIndicator() {
+        const typingIndicator = document.createElement('div');
+        typingIndicator.classList.add('typing-indicator');
+        typingIndicator.style.display = 'flex';
+        typingIndicator.style.justifyContent = 'center';
+        typingIndicator.style.alignItems = 'center';
+        typingIndicator.style.gap = '5px';
+    
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('span');
+            dot.style.width = '8px';
+            dot.style.height = '8px';
+            dot.style.backgroundColor = '#555';
+            dot.style.borderRadius = '50%';
+            dot.style.animation = 'bounce 1.2s infinite ease-in-out';
+            dot.style.animationDelay = `${i * 0.2}s`;
+            typingIndicator.appendChild(dot);
+        }
+    
+        return typingIndicator;
+    }
+    
+    // Keyframe animation for dots
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes bounce {
+        0%, 80%, 100% {
+          transform: translateY(0); /* Dots at original position */
+        }
+        40% {
+          transform: translateY(-10px); /* Dots move up */
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    // Function to show the typing indicator
+    function showTypingIndicator() {
+        // Check if typing indicator already exists
+        if (!typingIndicator) {
+            typingIndicator = createTypingIndicator();
+    
+            // Create a new chat bubble for the receiver if it doesn't exist
+            const recDiv = document.createElement('div');
+            recDiv.classList.add('bubble', 'right');
+            recDiv.appendChild(typingIndicator);
+            chat.appendChild(recDiv);  // Append the bubble to chat container
+        }
+    
+        typingIndicator.style.display = 'flex'; // Show the typing indicator
+    }
+    
+    // Function to hide the typing indicator and remove the bubble if it's no longer needed
+    function hideTypingIndicator() {
+        if (typingIndicator) {
+            typingIndicator.style.display = 'none'; // Hide the typing indicator
+    
+            // If the typing indicator is hidden, remove the bubble from the chat container
+            if (typingIndicator.style.display === 'none') {
+                const bubble = typingIndicator.closest('.bubble');
+                if (bubble) {
+                    chatContainer.removeChild(bubble); // Remove the bubble from chat container
+                }
+                typingIndicator = null; // Reset typing indicator reference
+            }
         }
     }
-});
-
-// Function to create typing indicator with dots animation
-function createTypingIndicator() {
-    const typingIndicator = document.createElement('div');
-    typingIndicator.classList.add('typing-indicator');
-    typingIndicator.style.display = 'flex';
-    typingIndicator.style.justifyContent = 'center';
-    typingIndicator.style.alignItems = 'center';
-    typingIndicator.style.gap = '5px';
-    typingIndicator.style.padding = '10px';
-
-    for (let i = 0; i < 3; i++) {
-        const dot = document.createElement('span');
-        dot.style.width = '8px';
-        dot.style.height = '8px';
-        dot.style.backgroundColor = 'white';
-        dot.style.borderRadius = '50%';
-        dot.style.animation = 'bounce 1.2s infinite ease-in-out';
-        dot.style.animationDelay = `${i * 0.2}s`;
-        typingIndicator.appendChild(dot);
-    }
-
-    return typingIndicator;
-}
-
-// Keyframe animation for dots
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes bounce {
-    0%, 80%, 100% {
-      transform: translateY(0); /* Dots at original position */
-    }
-    40% {
-      transform: translateY(-10px); /* Dots move up */
-    }
-  }
-`;
-document.head.appendChild(style);
-
-// Function to show the typing indicator (add it to the DOM if not already added)
-socket.on('userTyping', ({ isTyping, sender }) => {
-    if (sender === receiver) {
-        if (isTyping) {
-            console.log("typing show");
-            showTypingIndicator();
-        } else {
-            console.log("typing hide");
-            hideTypingIndicator();
-        }
-    }
-
-    // Ensure scrolling happens after DOM updates
-    setTimeout(() => {
-        jQuery("#message-container").scrollTop(jQuery("#message-container")[0].scrollHeight);
-    }, 0);
-});
-function showTypingIndicator() {
-    // If the typing bubble doesn't exist, create it
-    if (!typingBubble) {
-        typingBubble = document.createElement('div');
-        typingBubble.classList.add('bubble', 'right');
-        typingBubble.id = 'dots';
-        typingBubble.classList.add('typing'); // Add 'typing' class for identification
-        typingIndicator = createTypingIndicator();
-        typingBubble.appendChild(typingIndicator);
-    }
-
-    // Ensure the typing bubble is visible
-    typingBubble.style.display = 'flex';
-    typingIndicator.style.display = 'flex';
-
-    // Only append the typing bubble if it hasn't been added yet
-    if (!chat.contains(typingBubble)) {
-        chat.appendChild(typingBubble); // Append the typing indicator to the correct place
-    }
-}
-
-// Function to hide the typing indicator (remove from DOM temporarily)
-function hideTypingIndicator() {
-    if (typingBubble) {
-        // Hide the typing bubble without resetting animation
-        typingBubble.style.display = 'none'; // Just hide the bubble
-        typingBubble.remove();
-    }
-}
-
-// Function to append a new text message bubble
-function appendTextBubble(message) {
-    // Before appending the new text bubble, hide any existing typing indicator
-    hideTypingIndicator();
-
-    const textBubble = document.createElement('div');
-    textBubble.classList.add('bubble', 'right');
-    textBubble.textContent = message;
-
-    // Append the new text bubble to the chat container
-    chat.appendChild(textBubble);
-}
-
+    
 function adjustMarginForScrollbar() {
     //const chat = document.getElementById('chat');
     const messages = document.querySelectorAll('.left');
