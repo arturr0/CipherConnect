@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+.dropdown .dropdown-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.7s ease;
+        z-index: 10;
+    }
+
+    .dropdown:hover .dropdown-content {
+        max-height: 150px; /* Adjust this to match the actual height of the dropdown content */
+        transition: max-height 0.7s ease;
+        z-index: 10;
+    }
+.a {
+    background-color: aqua;
+}
+</style>
+</head>
+<body>
+    <div class="dropdown">
+        <div>menu</div>
+        <div class="dropdown-content hidden">
+            <div class="a">1</div>
+            <div class="a">2</div>
+            <div class="a">3</div>
+            <div class="a">1</div>
+            <div class="a">2</div>
+            <div class="a">3</div>
+            <div class="a">1</div>
+            <div class="a">2</div>
+            <div class="a">3</div>
+        </div>
+    </div>
+
+    
+</body>
+</html>
