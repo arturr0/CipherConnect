@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const app = express();
 const server = http.createServer(app);
-// const io = socketIo(server);
+const io = socketIo(server);
 const JWT_SECRET = process.env.JWT_SECRET;
 const uploadsDir = path.join(__dirname, 'uploads'); // Adjust the path according to your project structure
 
@@ -42,19 +42,7 @@ app.set('view engine', 'pug');
 
 
 // Handle file upload route
-const io = require('socket.io')(server, { 
-    maxHttpBufferSize: 2 * 1024 * 1024,
-    debug: true  // Enable verbose logging
-});
-app.use('/uploads', express.static(uploadsDir)); // Serve images from the uploads directory
-//app.use('/uploads', express.static('uploads'));
-app.use(require('express-fileupload')({
-    limits: { fileSize: 2 * 1024 * 1024 } // 1 MB
-}));
-// Create uploads directory if it doesn't exist
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadsDir); // Set the destination to 'uploads' directory
@@ -76,39 +64,27 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 // Encryption/Decryption functions
-
-
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // Ensure it's a hex string
-const IV_LENGTH = 16; // AES block size
-
-if (ENCRYPTION_KEY.length !== 32) {
-    throw new Error("ENCRYPTION_KEY must be 32 bytes long.");
-}
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // Use Buffer to create key from hex
+const IV_LENGTH = 16; // For AES, this is always 16
 
 // Function to encrypt a message
 function encrypt(text) {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted; // Return IV + encrypted text
+    let iv = crypto.randomBytes(IV_LENGTH);
+    let cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex'); // Store IV with the encrypted message
 }
 
 // Function to decrypt a message
 function decrypt(text) {
-    const textParts = text.split(':');
-    const iv = Buffer.from(textParts.shift(), 'hex');
-    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-    
-    try {
-        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
-    } catch (error) {
-        console.error('Decryption failed:', error);
-        return null; // Return null or handle error as needed
-    }
+    let textParts = text.split(':');
+    let iv = Buffer.from(textParts.shift(), 'hex');
+    let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    let decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
 }
 
 
@@ -207,7 +183,6 @@ db.serialize(() => {
 }); 
 
 // Serve the authorization page
-// Serve the main page
 app.get('/', (req, res) => {
     res.render('index');
 });
@@ -227,30 +202,9 @@ app.get('/chat', (req, res) => {
     });
 });
 
-// User registration with validation
-// User registration with validation
+// User registration
 app.post('/register', (req, res) => {
     const { username, password } = req.body;
-
-    // Initialize an array to collect error messages
-    const errors = [];
-
-    // Validate username length
-    if (!username || username.length < 1 || username.length > 20) {
-        errors.push('Username must be between 1 and 20 characters.');
-    }
-
-    // Validate password length
-    if (!password || password.length < 4 || password.length > 8) {
-        errors.push('Password must be between 4 and 8 characters.');
-    }
-
-    // If there are any errors, return them
-    if (errors.length > 0) {
-        return res.status(400).json({ message: errors.join(' ') });
-    }
-
-    // Hash the password and save the user
     bcrypt.hash(password, 10, (err, hash) => {
         if (err) return res.status(500).json({ message: 'Server error' });
 
@@ -261,61 +215,28 @@ app.post('/register', (req, res) => {
     });
 });
 
-// User login with validation
-// User login with validation
-// User login with validation
-// User login with validation
+// User login
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
-    // Initialize an array to collect error messages
-    const errors = [];
-
-    // Validate username length
-    if (!username || username.length < 1 || username.length > 20) {
-        errors.push('Username must be between 1 and 20 characters.');
-    }
-
-    // Validate password length
-    if (!password || password.length < 4 || password.length > 8) {
-        errors.push('Password must be between 4 and 8 characters.');
-    }
-
-    // If there are any errors, return them
-    if (errors.length > 0) {
-        return res.status(400).json({ message: errors.join(' ') }); // Return JSON error message
-    }
-
-    // Check if user exists
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-        if (err || !user) {
-            return res.status(401).json({ message: 'Invalid username or password' }); // Return JSON error message
-        }
+        if (err || !user) return res.status(401).json({ message: 'Invalid username or password' });
 
-        // Compare the password with the hashed password
         bcrypt.compare(password, user.password, (err, match) => {
-            if (err || !match) {
-                return res.status(401).json({ message: 'Invalid username or password' }); // Return JSON error message
-            }
+            if (err || !match) return res.status(401).json({ message: 'Invalid username or password' });
 
-            // Generate JWT token and set it as a cookie
             const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
             res.cookie('token', token, {
                 httpOnly: true, 
                 secure: true, 
-                sameSite: 'None', 
+                sameSite: 'None', // Explicitly set the SameSite attribute to 'None'
                 maxAge: 3600000 // 1 hour in milliseconds
             });
             
-            // Redirect to /chat on successful login
-            return res.status(200).json({ message: 'Login successful' }); // Return JSON success message
+            res.status(200).json({ message: 'Login successful' });
         });
     });
 });
-
-
-
-
 
 // Socket.IO handling
 io.on('connection', (socket) => {
@@ -485,7 +406,99 @@ io.on('connection', (socket) => {
             });
         });
     });
-    
+    socket.on('requestGroupMessages', (groupId) => {
+        // Step 1: Find the sender's user ID and username based on socketId
+        db.get(`SELECT id, username FROM users WHERE socketId = ?`, [socket.id], (err, user) => {
+            if (err) {
+                console.error('Error finding sender ID:', err);
+                socket.emit('error', 'Error finding sender ID');
+                return;
+            }
+
+            if (!user) {
+                socket.emit('error', 'Sender not found.');
+                return;
+            }
+
+            const senderId = user.id;
+
+            // Step 2: Update receiver to NULL and groupRec to the sent groupId
+            db.run(`UPDATE users SET receiver = NULL, groupRec = ? WHERE id = ?`, [groupId, senderId], (err) => {
+                if (err) {
+                    console.error('Error updating user info:', err);
+                    socket.emit('error', 'Error updating user info');
+                    return;
+                }
+
+                // Step 3: Retrieve group messages where RecId matches senderId and groupRec matches the groupId in users table
+                db.all(`
+                    SELECT GroupMessages.id, GroupMessages.message, GroupMessages.sendTime, GroupMessages.read, users.username AS senderName
+                    FROM GroupMessages
+                    JOIN users ON GroupMessages.senderId = users.id
+                    WHERE GroupMessages.RecId = ? AND users.groupRec = ? AND GroupMessages.groupId = ?
+                `, [senderId, groupId, groupId], (err, messages) => {
+                    if (err) {
+                        console.error('Error retrieving group messages:', err);
+                        socket.emit('error', 'Error retrieving group messages');
+                        return;
+                    }
+
+                    // Format the messages for response
+                    const formattedMessages = messages.map(msg => ({
+                        message: msg.message,
+                        sendTime: msg.sendTime,
+                        senderName: msg.senderName
+                    }));
+
+                    // Step 4: Update unread messages (read = 0) to read (read = 1)
+                    const unreadMessageIds = messages
+                        .filter(msg => msg.read === 0)
+                        .map(msg => msg.id);
+
+                    if (unreadMessageIds.length > 0) {
+                        const placeholders = unreadMessageIds.map(() => '?').join(',');
+                        db.run(`UPDATE GroupMessages SET read = 1 WHERE id IN (${placeholders})`, unreadMessageIds, (err) => {
+                            if (err) {
+                                console.error('Error updating message read status:', err);
+                                socket.emit('error', 'Error updating message read status');
+                                return;
+                            }
+
+                            // Step 5: Send the array of messages to the client through the socket
+                            socket.emit('groupMessages', formattedMessages);
+
+                            // Step 6: Delete messages with toDelete = 1
+                            db.run(`DELETE FROM GroupMessages WHERE toDelete = 1 AND RecId = ? AND groupId = ?`, [senderId, groupId], (err) => {
+                                if (err) {
+                                    console.error('Error deleting messages marked for deletion:', err);
+                                }
+                            });
+                        });
+                    } else {
+                        // Send messages immediately if there are no unread messages to update
+                        socket.emit('groupMessages', formattedMessages);
+
+                        // Step 6: Delete messages with toDelete = 1
+                        db.run(`
+                            DELETE FROM GroupMessages 
+                            WHERE toDelete = 1 
+                            AND RecId = ? 
+                            AND EXISTS (
+                                SELECT 1 
+                                FROM users 
+                                WHERE users.id = GroupMessages.RecId 
+                                AND users.groupRec = ?
+                            )
+                        `, [senderId, groupId], (err) => {
+                            if (err) {
+                                console.error('Error deleting messages marked for deletion:', err);
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    });
     
     // socket.on('group message', ({ username, group, messageSent, storeMessage, sendTime }) => {
     //     // Fetch sender's ID
@@ -565,12 +578,6 @@ io.on('connection', (socket) => {
 
 socket.on('group message', ({ username, group, messageSent, storeMessage, sendTime }) => { 
     // Fetch sender's ID
-    const encryptedMessage = encrypt(messageSent);
-    // console.log(decrypt("mess", encryptedMessage));
-    if (typeof messageSent === 'string') {
-        console.log("string");
-    }
-    else console.log("not string");
     db.get(`SELECT id FROM users WHERE username = ?`, [username], (err, sender) => {
         if (err || !sender) {
             console.error("Sender not found or error:", err);
@@ -587,308 +594,188 @@ socket.on('group message', ({ username, group, messageSent, storeMessage, sendTi
             const groupName = groupInfo.name;
 
             // Fetch accepted group members
-            db.all(`SELECT invited AS recId FROM groupInvite WHERE groupId = ? AND accepted = 1`, [group], (err, members) => {
-                if (err) {
-                    console.error("Error fetching group members:", err);
-                    return;
-                }
-
-                members.forEach((member) => {
-                    const recId = member.recId;
-                     // Encrypt the message
-
-                    if (storeMessage) {
-                        // Check if the recipient has `groupRec` in users table matching `group`
-                        db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
-                            if (err) {
-                                console.error("Error checking user's group:", err);
-                                return;
-                            }
-
-                            // Store message in GroupMessages with proper read status
-                            db.run(`INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                                [
-                                    senderId, recId, encryptedMessage,
-                                    userInGroup ? 1 : 0, // Set `read` to 1 if the recipient is in the group
-                                    sendTime, 0,
-                                    group // `toDelete` set to 0 for group members
-                                ], (err) => {
-                                    if (err) console.error("Error storing message:", err);
-                                });
-                        });
-                    } else {
-                        // Only store if recipient does not have the group assigned
-                        db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
-                            if (err) {
-                                console.error("Error checking user's group:", err);
-                                return;
-                            }
-
-                            if (!userInGroup) {
-                                // Store message with `toDelete` set to 1 for non-group members
-                                db.run(`INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
-                                        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                                    [
-                                        senderId, recId, encryptedMessage,
-                                        0, sendTime, 1,
-                                        group // `read` = 0, `toDelete` = 1 since recipient lacks the group
-                                    ], (err) => {
-                                        if (err) console.error("Error setting toDelete:", err);
-                                    });
-                            }
-                            // If user is in the group, do not store the message.
-                        });
+            db.all(`
+                SELECT invited AS recId 
+                FROM groupInvite 
+                WHERE groupId = ? AND accepted = 1`, [group], (err, members) => {
+                    if (err) {
+                        console.error("Error fetching group members:", err);
+                        return;
                     }
-                });
 
-                // Emit the message including the group name
-                socket.to(group).emit('send group message', { 
-                    sender: username, 
-                    groupOfMessage: group, 
-                    groupName: groupName, // Include the group name here
-                    message: messageSent, // Use the original message for emitting
-                    store: storeMessage, 
-                    time: sendTime 
+                    members.forEach((member) => {
+                        const recId = member.recId;
+
+                        if (storeMessage) {
+                            // Check if the recipient has `groupRec` in users table matching `group`
+                            db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
+                                if (err) {
+                                    console.error("Error checking user's group:", err);
+                                    return;
+                                }
+
+                                db.run(`
+                                    INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                    [
+                                        senderId, recId, messageSent,
+                                        userInGroup ? 1 : 0, // Set `read` to 1 if the recipient is in the group
+                                        sendTime, 0,
+                                        group // `toDelete` set to 0 since the message is stored for group members
+                                    ], (err) => {
+                                        if (err) console.error("Error storing message:", err);
+                                    }
+                                );
+                            });
+                        } else {
+                            // `storeMessage` is false; only store if recipient does not have the group assigned
+                            db.get(`SELECT id FROM users WHERE id = ? AND groupRec = ?`, [recId, group], (err, userInGroup) => {
+                                if (err) {
+                                    console.error("Error checking user's group:", err);
+                                    return;
+                                }
+
+                                if (!userInGroup) {
+                                    // Store the message with `toDelete` set to 1 if the recipient is not in the group
+                                    db.run(`
+                                        INSERT INTO GroupMessages (senderId, RecId, message, read, sendTime, toDelete, groupId) 
+                                        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                        [
+                                            senderId, recId, messageSent,
+                                            0, sendTime, 1,
+                                            group // `read` = 0, `toDelete` = 1 since recipient lacks the group
+                                        ], (err) => {
+                                            if (err) console.error("Error setting toDelete:", err);
+                                        }
+                                    );
+                                }
+                                // If user is in the group (`userInGroup` exists), do not store the message.
+                            });
+                        }
+                    });
+
+                    // Emit the message including the group name
+                    socket.to(group).emit('send group message', { 
+                        sender: username, 
+                        groupOfMessage: group, 
+                        groupName: groupName, // Include the group name here
+                        message: messageSent, 
+                        store: storeMessage, 
+                        time: sendTime 
+                    });
                 });
-            });
         });
     });
 });
 
-socket.on('requestGroupMessages', (groupId) => {
-    // Step 1: Find the sender's user ID and username based on socketId
-    db.get(`SELECT id, username FROM users WHERE socketId = ?`, [socket.id], (err, user) => {
-        if (err) {
-            console.error('Error finding sender ID:', err);
-            socket.emit('error', 'Error finding sender ID');
+
+socket.on('sendMeMessages', (username, receiver) => {
+    // Retrieve ID of the sender (username)
+    db.get('SELECT id FROM users WHERE username = ?', [username], (err, sender) => {
+        if (err || !sender) {
+            console.error('Error finding sender:', err);
             return;
         }
 
-        if (!user) {
-            socket.emit('error', 'Sender not found.');
-            return;
-        }
-
-        const senderId = user.id;
-
-        // Step 2: Update receiver to NULL and groupRec to the sent groupId
-        db.run(`UPDATE users SET receiver = NULL, groupRec = ? WHERE id = ?`, [groupId, senderId], (err) => {
-            if (err) {
-                console.error('Error updating user info:', err);
-                socket.emit('error', 'Error updating user info');
+        // Retrieve ID and profileImage of the receiver (receiver username)
+        db.get('SELECT id, profileImage FROM users WHERE username = ?', [receiver], (err, receiverResult) => {
+            if (err || !receiverResult) {
+                console.error('Error finding receiver:', err);
                 return;
             }
 
-            // Step 3: Retrieve the group avatar from the groups table
-            db.get(`SELECT avatar, name FROM groups WHERE id = ?`, [groupId], (err, group) => {
+            // Update the 'receiver' column and set 'groupRec' to NULL in the 'users' table for the sender
+            db.run('UPDATE users SET receiver = ?, groupRec = NULL WHERE id = ?', [receiverResult.id, sender.id], (err) => {
                 if (err) {
-                    console.error('Error retrieving group data:', err);
-                    socket.emit('error', 'Error retrieving group data');
+                    console.error('Error updating receiver or resetting groupRec for sender:', err);
                     return;
                 }
+                console.log(`Receiver updated and groupRec set to NULL for user ${username}`);
 
-                const groupAvatar = group?.avatar || null;
-                const groupName = group.name;
-
-                // Step 4: Retrieve group messages along with sender's name
+                // Fetch messages between the sender and receiver, now including sendTime
                 db.all(`
-                    SELECT GroupMessages.id, GroupMessages.message, GroupMessages.sendTime, GroupMessages.read, GroupMessages.toDelete, 
-                           users.username AS senderName
-                    FROM GroupMessages
-                    JOIN users ON GroupMessages.senderId = users.id
-                    WHERE GroupMessages.RecId = ? AND GroupMessages.groupId = ?`, 
-                [senderId, groupId], (err, messages) => {
-                    if (err) {
-                        console.error('Error retrieving group messages:', err);
-                        socket.emit('error', 'Error retrieving group messages');
-                        return;
-                    }
-
-                    // Format messages with decrypted content
-                    const formattedMessages = messages.map(msg => {
-                        try {
-                            const decryptedMessage = decrypt(msg.message);
-                            return {
-                                message: decryptedMessage,
-                                sendTime: msg.sendTime,
-                                senderName: msg.senderName,
-                                store: msg.toDelete
-                            };
-                        } catch (error) {
-                            console.error('Decryption error for message:', msg.message, error);
-                            return null;
-                        }
-                    }).filter(Boolean);
-
-                    // Step 5: Count unread messages (read = 0) for the current RecId
-                    db.get(`
-                        SELECT COUNT(*) AS unreadGroupCount
-                        FROM GroupMessages
-                        WHERE RecId = ? AND groupId = ? AND read = 0`,
-                    [senderId, groupId], (err, row) => {
+                    SELECT messages.id, 
+                           messages.message, 
+                           messages.read, 
+                           messages.sendTime, 
+                           messages.toDelete,   /* Fetch toDelete status */
+                           sender.username AS senderUsername, 
+                           receiver.username AS receiverUsername 
+                    FROM messages 
+                    JOIN users AS sender ON messages.senderId = sender.id 
+                    JOIN users AS receiver ON messages.recId = receiver.id 
+                    WHERE (messages.senderId = ? AND messages.recId = ?) 
+                       OR (messages.senderId = ? AND messages.recId = ?)`,
+                    [sender.id, receiverResult.id, receiverResult.id, sender.id],
+                    (err, messages) => {
                         if (err) {
-                            console.error('Error counting unread group messages:', err);
-                            socket.emit('error', 'Error counting unread group messages');
+                            console.error('Error fetching messages:', err);
                             return;
                         }
 
-                        const unreadGroupCount = row?.unreadGroupCount || 0;
+                        // Decrypt each message and include sendTime
+                        const decryptedMessages = messages.map(msg => {
+                            try {
+                                return {
+                                    id: msg.id,  // Include the message ID for deletion later
+                                    message: decrypt(msg.message),  // Decrypt the message text
+                                    senderUsername: msg.senderUsername,
+                                    receiverUsername: msg.receiverUsername,
+                                    read: msg.read,
+                                    time: msg.sendTime,
+                                    toDelete: msg.toDelete
+                                };
+                            } catch (decryptionError) {
+                                console.error('Error decrypting message:', decryptionError);
+                                return null;  // Skip the message if it fails to decrypt
+                            }
+                        }).filter(msg => msg !== null);  // Filter out null (failed decryption)
 
-                        // Step 6: Send messages, group info, and unread count to the client
-                        socket.emit('groupMessages', { 
-                            messages: formattedMessages, 
-                            groupAvatar, 
-                            groupName, 
-                            groupId, 
-                            unreadGroupCount // Include unread count here
+                        // Log decrypted messages to verify they are correctly decrypted
+                        console.log('Decrypted messages to send:', decryptedMessages);
+
+                        // Send decrypted messages and the receiver's profile image separately
+                        socket.emit('messagesResponse', {
+                            messages: decryptedMessages,  // Array of decrypted messages
+                            profileImage: receiverResult.profileImage  // The receiver's profile image
                         });
 
-                        // Step 7: Update unread messages (read = 0) to read (read = 1)
-                        const unreadMessageIds = messages.filter(msg => msg.read === 0).map(msg => msg.id);
-                        if (unreadMessageIds.length > 0) {
-                            const placeholders = unreadMessageIds.map(() => '?').join(',');
-                            db.run(`UPDATE GroupMessages SET read = 1 WHERE id IN (${placeholders})`, unreadMessageIds, (err) => {
+                        // Now mark messages as read if the receiver (user) has seen them
+                        db.run(`
+                            UPDATE messages 
+                            SET read = 1 
+                            WHERE recId = ? AND senderId = ? 
+                              AND read = 0`,  // Only update unread messages
+                            [sender.id, receiverResult.id],  // recId is the sender (user), senderId is the receiver
+                            (err) => {
                                 if (err) {
-                                    console.error('Error updating message read status:', err);
-                                    socket.emit('error', 'Error updating message read status');
-                                    return;
+                                    console.error('Error marking messages as read:', err);
+                                } else {
+                                    console.log(`Messages marked as read between ${username} and ${receiver}`);
+                                }
+                            }
+                        );
+
+                        // Check for and delete messages that have 'toDelete' set to 1
+                        const messagesToDelete = messages.filter(msg => msg.toDelete === 1).map(msg => msg.id);
+                        if (messagesToDelete.length > 0) {
+                            db.run(`DELETE FROM messages WHERE id IN (${messagesToDelete.join(',')})`, (err) => {
+                                if (err) {
+                                    console.error('Error deleting messages:', err);
+                                } else {
+                                    console.log('Messages with toDelete = 1 have been deleted:', messagesToDelete);
                                 }
                             });
                         }
-
-                        // Step 8: Delete messages marked with 'toDelete'
-                        db.run(`DELETE FROM GroupMessages WHERE toDelete = 1 AND RecId = ? AND groupId = ?`, [senderId, groupId], (err) => {
-                            if (err) {
-                                console.error('Error deleting messages marked for deletion:', err);
-                            }
-                        });
-                    });
-                });
+                    }
+                );
             });
         });
     });
 });
 
 
-    socket.on('sendMeMessages', (username, receiver) => {
-        // Retrieve ID of the sender (username)
-        db.get('SELECT id FROM users WHERE username = ?', [username], (err, sender) => {
-            if (err || !sender) {
-                console.error('Error finding sender:', err);
-                return;
-            }
 
-            // Retrieve ID, profileImage, and username of the receiver (receiver username)
-            db.get('SELECT id, profileImage, username FROM users WHERE username = ?', [receiver], (err, receiverResult) => {
-                if (err || !receiverResult) {
-                    console.error('Error finding receiver:', err);
-                    return;
-                }
-
-                // Update the 'receiver' column and set 'groupRec' to NULL in the 'users' table for the sender
-                db.run('UPDATE users SET receiver = ?, groupRec = NULL WHERE id = ?', [receiverResult.id, sender.id], (err) => {
-                    if (err) {
-                        console.error('Error updating receiver or resetting groupRec for sender:', err);
-                        return;
-                    }
-                    console.log(`Receiver updated and groupRec set to NULL for user ${username}`);
-
-                    // Fetch messages between the sender and receiver, now including sendTime
-                    db.all(`
-                        SELECT messages.id, 
-                            messages.message, 
-                            messages.read, 
-                            messages.sendTime, 
-                            messages.toDelete,
-                            sender.username AS senderUsername, 
-                            receiver.username AS receiverUsername 
-                        FROM messages 
-                        JOIN users AS sender ON messages.senderId = sender.id 
-                        JOIN users AS receiver ON messages.recId = receiver.id 
-                        WHERE (messages.senderId = ? AND messages.recId = ?) 
-                        OR (messages.senderId = ? AND messages.recId = ?)`,
-                        [receiverResult.id, sender.id, sender.id, receiverResult.id],
-                        (err, messages) => {
-                            if (err) {
-                                console.error('Error fetching messages:', err);
-                                return;
-                            }
-
-                            // Decrypt each message and include sendTime
-                            const decryptedMessages = messages.map(msg => {
-                                try {
-                                    return {
-                                        id: msg.id,
-                                        message: decrypt(msg.message),
-                                        senderUsername: msg.senderUsername,
-                                        receiverUsername: msg.receiverUsername,
-                                        read: msg.read,
-                                        time: msg.sendTime,
-                                        toDelete: msg.toDelete
-                                    };
-                                } catch (decryptionError) {
-                                    console.error('Error decrypting message:', decryptionError);
-                                    return null;
-                                }
-                            }).filter(msg => msg !== null);
-
-                            // Count unread messages where `recId` is `sender.id` and `senderId` is `receiverResult.id`
-                            db.get(`
-                                SELECT COUNT(*) AS unreadCount 
-                                FROM messages 
-                                WHERE recId = ? AND senderId = ? AND read = 0`,
-                                [sender.id, receiverResult.id],
-                                (err, row) => {
-                                    if (err) {
-                                        console.error('Error counting unread messages:', err);
-                                        return;
-                                    }
-
-                                    const unreadCount = row.unreadCount;
-
-                                    // Send decrypted messages, profile image, unread count, and receiver's username
-                                    socket.emit('messagesResponse', {
-                                        messages: decryptedMessages,
-                                        profileImage: receiverResult.profileImage,
-                                        unreadCount: unreadCount,
-                                        receiverUsername: receiverResult.username  // Include receiver's username here
-                                    });
-
-                                    // Mark messages as read if the receiver (user) has seen them
-                                    db.run(`
-                                        UPDATE messages 
-                                        SET read = 1 
-                                        WHERE recId = ? AND senderId = ? AND read = 0`,
-                                        [sender.id, receiverResult.id],
-                                        (err) => {
-                                            if (err) {
-                                                console.error('Error marking messages as read:', err);
-                                            } else {
-                                                console.log(`Messages marked as read between ${username} and ${receiver}`);
-                                            }
-                                        }
-                                    );
-
-                                    // Delete messages marked with 'toDelete'
-                                    const messagesToDelete = messages.filter(msg => msg.toDelete === 1).map(msg => msg.id);
-                                    if (messagesToDelete.length > 0) {
-                                        db.run(`DELETE FROM messages WHERE id IN (${messagesToDelete.join(',')})`, (err) => {
-                                            if (err) {
-                                                console.error('Error deleting messages:', err);
-                                            } else {
-                                                console.log('Messages with toDelete = 1 have been deleted:', messagesToDelete);
-                                            }
-                                        });
-                                    }
-                                }
-                            );
-                        }
-                    );
-                });
-            });
-        });
-    });
 
 
 
@@ -1038,34 +925,28 @@ socket.on('requestGroupMessages', (groupId) => {
                     // Emit accepted group invitations
                     db.all(`
                         SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar,
-                            CASE WHEN EXISTS (
-                                SELECT 1 
-                                FROM groupInvite gi_inner
-                                JOIN users u ON gi_inner.invited = u.id 
-                                WHERE gi_inner.groupId = g.id 
-                                  AND gi_inner.accepted = 1 
-                                  AND u.socketId IS NOT NULL 
-                                  AND u.id != ?  -- Exclude the current user
-                            ) THEN 1 ELSE 0 END AS online
+                            COUNT(u.socketId) > 0 AS online
                         FROM groupInvite gi
                         JOIN groups g ON gi.groupId = g.id
+                        LEFT JOIN users u ON u.id != ? AND u.socketId IS NOT NULL 
                         WHERE gi.invited = ? AND gi.accepted = 1
+                        GROUP BY g.id
                     `, [updatedUser.id, updatedUser.id], (err, groupInvites) => {
                         if (err) {
                             console.error('Error fetching accepted group invitations:', err);
                             return;
                         }
-                    
+    
                         const acceptedGroupInvites = groupInvites.map(invite => ({
                             groupId: invite.groupId,
                             groupName: invite.groupName,
                             groupAvatar: invite.groupAvatar || null,
                             online: invite.online
                         }));
-                    
+    
                         io.to(socket.id).emit('acceptedGroupInvites', acceptedGroupInvites);
                     });
-                    
+    
                     // User joins accepted groups (broadcast to group members)
                     db.all(`
                         SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
@@ -1090,7 +971,7 @@ socket.on('requestGroupMessages', (groupId) => {
                             console.log(`User joined group room: ${group.groupId}`);
                             
                             // Broadcast to all group members about the user joining
-                            socket.broadcast.to(`${group.groupId}`).emit('userJoinedGroup', {
+                            io.to(`${group.groupId}`).emit('userJoinedGroup', {
                                 userId: updatedUser.id,
                                 username: updatedUser.username,
                                 groupId: group.groupId,
@@ -1100,30 +981,6 @@ socket.on('requestGroupMessages', (groupId) => {
     
                         io.to(socket.id).emit('joinedGroups', myGroups);
                     });
-                    // Emit unread group message counts
-                    db.all(`
-                        SELECT g.id AS groupId, g.name AS groupName, COUNT(gm.id) AS unreadCount
-                        FROM GroupMessages gm
-                        JOIN groups g ON gm.groupId = g.id
-                        WHERE gm.RecId = ? AND gm.read = 0
-                        GROUP BY g.id
-                    `, [user.id], (err, unreadGroups) => {
-                        if (err) {
-                            console.error('Error fetching unread group messages count:', err);
-                            return;
-                        }
-
-                        // Structure the data to include group ID, group name, and unread message count
-                        const unreadGroupCounts = unreadGroups.map(group => ({
-                            groupId: group.groupId,
-                            groupName: group.groupName,
-                            unreadCount: group.unreadCount
-                        }));
-
-                        // Emit the unread group message counts to the user
-                        io.to(socket.id).emit('unreadGroupMessageCounts', unreadGroupCounts);
-                    });
-
                 });
             });
         });
@@ -1158,7 +1015,32 @@ socket.on('requestGroupMessages', (groupId) => {
     
     
     
-    
+    // socket.on('chatMessage', ({ message }) => {
+    //     db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, user) => {
+    //         if (err || !user) {
+    //             console.error('User not found for socket:', socket.id);
+    //             return;
+    //         }
+
+    //         const encryptedMessage = encrypt(message);
+    //         db.run('INSERT INTO messages (senderId, message) VALUES (?, ?)', [user.id, encryptedMessage], (err) => {
+    //             if (err) {
+    //                 console.error('Error saving message:', err);
+    //                 return;
+    //             }
+
+    //             db.get('SELECT message FROM messages WHERE senderId = ? ORDER BY id DESC LIMIT 1', [user.id], (err, row) => {
+    //                 if (err) {
+    //                     console.error('Error retrieving message:', err);
+    //                     return;
+    //                 }
+
+    //                 const decryptedMessage = decrypt(row.message);
+    //                 io.to(socket.id).emit('message', { user: user.username, message: decryptedMessage });
+    //             });
+    //         });
+    //     });
+    // });
     socket.on('findUsers', async (searchUser) => {
         console.log("Searching for user:", searchUser);
         try {
@@ -1254,7 +1136,220 @@ socket.on('requestGroupMessages', (groupId) => {
     });
     
     
+    // socket.on('confirm invite', ({ decision, invitingName }) => {
+    //     // Find the invited user's info (current user)
+    //     db.get('SELECT username, profileImage FROM users WHERE socketId = ?', [socket.id], (err, invited) => {
+    //         if (err || !invited) {
+    //             console.error('Invited user not found:', err);
+    //             return;
+    //         }
     
+    //         const invitedName = invited.username;
+    //         const invitedImage = invited.profileImage;
+    
+    //         // Find the inviting user's socketId and profileImage based on their username (invitingName)
+    //         db.get('SELECT socketId, profileImage FROM users WHERE username = ?', [invitingName], (err, inviting) => {
+    //             if (err || !inviting) {
+    //                 console.error('Inviting user not found:', err);
+    //                 return;
+    //             }
+    
+    //             const invitingSocketId = inviting.socketId;
+    //             const invitingImage = inviting.profileImage; // Fetching inviting user's profile image
+    
+    //             // Only proceed if the decision is to accept the invitation
+    //             if (decision) {
+    //                 // Update the `accepted` column to 1 in the friends table
+    //                 db.run('UPDATE friends SET accepted = 1 WHERE inviting = ? AND invited = ?', [inviting.id, invited.id], (err) => {
+    //                     if (err) {
+    //                         console.error('Error updating friends table:', err);
+    //                     } else {
+    //                         console.log(`Invitation accepted by user ${invited.id}`);
+    
+    //                         // Send the invited user's details to the inviting user's socket
+    //                         io.to(invitingSocketId).emit('invitationConfirmed', {
+    //                             invitedName: invitedName,
+    //                             invitedImage: invitedImage
+    //                              // Sending the inviting user's profile image
+    //                         });
+    
+    //                         // Optionally, send the inviting user's details to the invited user's socket
+    //                         socket.emit('invitationConfirmed', {
+    //                             invitingName: invitingName,
+    //                             invitingImage: invitingImage, // If you want to send the inviting user's profile image back
+    //                         });
+    //                     }
+    //                 });
+    //             } else {
+    //                 // If rejected, delete the entry from the friends table
+    //                 db.run('DELETE FROM friends WHERE inviting = ? AND invited = ?', [inviting.id, invited.id], (err) => {
+    //                     if (err) {
+    //                         console.error('Error deleting from friends table:', err);
+    //                     } else {
+    //                         console.log(`Invitation rejected by user ${invited.id}`);
+    //                     }
+    //                 });
+    //             }
+    //         });
+    //     });
+    // });
+    // socket.on('confirm invite', ({ decision, invitingName }) => {
+    //     // Find the invited user's info (current user)
+    //     db.get('SELECT id, username, profileImage FROM users WHERE socketId = ?', [socket.id], (err, invited) => {
+    //         if (err || !invited) {
+    //             console.error('Invited user not found:', err);
+    //             return;
+    //         }
+    
+    //         const invitedId = invited.id; // Ensure you get the ID here
+    //         const invitedName = invited.username;
+    //         const invitedImage = invited.profileImage;
+    
+    //         console.log('Invited User ID:', invitedId); // Log the invited user ID
+    
+    //         // Find the inviting user's socketId and profileImage based on their username (invitingName)
+    //         db.get('SELECT id, socketId, profileImage FROM users WHERE username = ?', [invitingName], (err, inviting) => {
+    //             if (err || !inviting) {
+    //                 console.error('Inviting user not found:', err);
+    //                 return;
+    //             }
+    
+    //             const invitingId = inviting.id;
+    //             const invitingSocketId = inviting.socketId;
+    //             const invitingImage = inviting.profileImage; // Fetching inviting user's profile image
+    
+    //             // Log the IDs
+    //             console.log('Inviting ID:', invitingId);
+    //             console.log('Invited ID:', invitedId);
+    
+    //             // Only proceed if the decision is to accept the invitation
+    //             if (decision) {
+    //                 // Update the `accepted` column to 1 in the friends table
+    //                 db.run('UPDATE friends SET accepted = 1 WHERE inviting = ? AND invited = ?', [invitingId, invitedId], function(err) {
+    //                     if (err) {
+    //                         console.error('Error updating friends table:', err);
+    //                     } else if (this.changes === 0) {
+    //                         console.log('No rows updated. Check if inviting and invited IDs are correct.');
+    //                     } else {
+    //                         console.log(`Invitation accepted by user ${invitedId}`); // Use invitedId here
+    
+    //                         // Send the invited user's details to the inviting user's socket
+    //                         io.to(invitingSocketId).emit('invitationConfirmed', {
+    //                             invitedName: invitedName,
+    //                             invitedImage: invitedImage
+    //                         });
+    
+    //                         // Optionally, send the inviting user's details to the invited user's socket
+    //                         socket.emit('invitationConfirmed', {
+    //                             invitingName: invitingName,
+    //                             invitingImage: invitingImage // If you want to send the inviting user's profile image back
+    //                         });
+    //                     }
+    //                 });
+    //             } else {
+    //                 // If rejected, delete the entry from the friends table
+    //                 db.run('DELETE FROM friends WHERE inviting = ? AND invited = ?', [invitingId, invitedId], (err) => {
+    //                     if (err) {
+    //                         console.error('Error deleting from friends table:', err);
+    //                     } else {
+    //                         console.log(`Invitation rejected by user ${invitedId}`);
+    //                     }
+    //                 });
+    //             }
+    //         });
+    //     });
+    // });
+    //tbale but with own data
+    // socket.on('confirm invite', ({ decision, invitingName }) => {
+    //     // Find the invited user's info (current user)
+    //     db.get('SELECT id, username, profileImage FROM users WHERE socketId = ?', [socket.id], (err, invited) => {
+    //         if (err || !invited) {
+    //             console.error('Invited user not found:', err);
+    //             return;
+    //         }
+    
+    //         const invitedId = invited.id;
+    //         const invitedName = invited.username;
+    //         const invitedImage = invited.profileImage;
+    
+    //         // Find the inviting user's socketId and profileImage based on their username (invitingName)
+    //         db.get('SELECT id, socketId, profileImage FROM users WHERE username = ?', [invitingName], (err, inviting) => {
+    //             if (err || !inviting) {
+    //                 console.error('Inviting user not found:', err);
+    //                 return;
+    //             }
+    
+    //             const invitingId = inviting.id;
+    //             const invitingSocketId = inviting.socketId;
+    //             const invitingImage = inviting.profileImage;
+    
+    //             // Only proceed if the decision is to accept the invitation
+    //             if (decision) {
+    //                 // Update the `accepted` column to 1 in the friends table
+    //                 db.run('UPDATE friends SET accepted = 1 WHERE inviting = ? AND invited = ?', [invitingId, invitedId], function (err) {
+    //                     if (err) {
+    //                         console.error('Error updating friends table:', err);
+    //                     } else if (this.changes === 0) {
+    //                         console.log('No rows updated. Check if inviting and invited IDs are correct.');
+    //                     } else {
+    //                         console.log(`Invitation accepted by user ${invitedId}`);
+    
+    //                         // Fetch the updated friends list for both users (where accepted = 1)
+    //                         const fetchFriends = (userId, callback) => {
+    //                             const query = `
+    //                                 SELECT u.username, u.profileImage
+    //                                 FROM friends f
+    //                                 JOIN users u ON (f.inviting = u.id OR f.invited = u.id)
+    //                                 WHERE (f.inviting = ? OR f.invited = ?) AND f.accepted = 1
+    //                             `;
+    //                             db.all(query, [userId, userId], (err, friends) => {
+    //                                 if (err) {
+    //                                     console.error('Error fetching friends:', err);
+    //                                 }
+    //                                 callback(friends);
+    //                             });
+    //                         };
+    
+    //                         // Fetch and send the invited user's friends list
+    //                         fetchFriends(invitedId, (invitedFriends) => {
+    //                             socket.emit('friendsList', {
+    //                                 friends: invitedFriends,
+    //                             });
+    //                         });
+    
+    //                         // Fetch and send the inviting user's friends list
+    //                         fetchFriends(invitingId, (invitingFriends) => {
+    //                             io.to(invitingSocketId).emit('friendsList', {
+    //                                 friends: invitingFriends,
+    //                             });
+    //                         });
+    
+    //                         // Optionally, send the invited user's details to the inviting user's socket
+    //                         io.to(invitingSocketId).emit('invitationConfirmed', {
+    //                             invitedName: invitedName,
+    //                             invitedImage: invitedImage
+    //                         });
+    
+    //                         // Optionally, send the inviting user's details to the invited user's socket
+    //                         socket.emit('invitationConfirmed', {
+    //                             invitingName: invitingName,
+    //                             invitingImage: invitingImage
+    //                         });
+    //                     }
+    //                 });
+    //             } else {
+    //                 // If rejected, delete the entry from the friends table
+    //                 db.run('DELETE FROM friends WHERE inviting = ? AND invited = ?', [invitingId, invitedId], (err) => {
+    //                     if (err) {
+    //                         console.error('Error deleting from friends table:', err);
+    //                     } else {
+    //                         console.log(`Invitation rejected by user ${invitedId}`);
+    //                     }
+    //                 });
+    //             }
+    //         });
+    //     });
+    // });
     socket.on('confirm group', ({ decision, invitingName }) => {
         // Find the invited user's id based on their socket ID
         db.get(`SELECT id FROM users WHERE socketId = ?`, [socket.id], (err, invitedUser) => {
@@ -1380,49 +1475,6 @@ socket.on('requestGroupMessages', (groupId) => {
             });
         });
     });
-    // When the client sends a group ID to delete the invite
-    socket.on('quit group', (groupId) => {
-        // Step 1: Remove the user from the socket room
-        socket.leave(groupId);
-    
-        // Step 2: Delete the user's invite from the groupInvite table
-        db.run(`
-            DELETE FROM groupInvite 
-            WHERE groupId = ? AND invited = (
-                SELECT id FROM users WHERE socketId = ?
-            )
-        `, [groupId, socket.id], (err) => {
-            if (err) {
-                console.error('Error deleting group invite:', err);
-                return;
-            }
-    
-            // Step 3: After deletion, count remaining online users excluding the current user
-            db.all(`
-                SELECT u.socketId
-                FROM groupInvite gi
-                JOIN users u ON gi.invited = u.id
-                WHERE gi.groupId = ? AND gi.accepted = 1 
-                AND u.socketId IS NOT NULL
-                AND u.socketId != ?
-            `, [groupId, socket.id], (err, rows) => {
-                if (err) {
-                    console.error('Error checking for online group members:', err);
-                    return;
-                }
-    
-                // Step 4: Notify all remaining online users if there is at least one online
-                if (rows && rows.length == 1) {
-                    rows.forEach(row => {
-                        io.to(row.socketId).emit('user quit group', { groupId });
-                    });
-                }
-            });
-        });
-    });
-    
-    
-
     socket.on('group selected', (username, group) => {
         // Retrieve ID of the sender (username)
         db.get('SELECT id FROM users WHERE username = ?', [username], (err, sender) => {
@@ -2095,85 +2147,9 @@ const sendUpdatedFriendsList = (userId) => {
 
 
 
-// Group svg not works
-// socket.on('disconnect', () => {
-//     // First, find the user that disconnected based on the socketId
-//     db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, disconnectedUser) => {
-//         if (err || !disconnectedUser) {
-//             console.error('Disconnected user not found:', err);
-//             return;
-//         }
-
-//         const disconnectedUserId = disconnectedUser.id;
-
-//         // Clear the socketId and receiver fields
-//         db.run('UPDATE users SET socketId = NULL, receiver = NULL, groupRec = NULL WHERE id = ?', [disconnectedUserId], (err) => {
-//             if (err) {
-//                 console.error('Error clearing socketId and receiver:', err);
-//             } else {
-//                 console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
-
-//                 // Fetch groups of the disconnected user
-//                 db.all(`
-//                     SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
-//                     FROM groupInvite gi
-//                     JOIN groups g ON gi.groupId = g.id
-//                     WHERE gi.invited = ? AND gi.accepted = 1
-//                 `, [disconnectedUserId], (err, groups) => {
-//                     if (err) {
-//                         console.error('Error fetching groups for disconnected user:', err);
-//                         return;
-//                     }
-
-//                     // Find all users in those groups
-//                     const groupIds = groups.map(group => group.groupId);
-//                     if (groupIds.length === 0) return; // No groups to process
-
-//                     const placeholders = groupIds.map(() => '?').join(',');
-//                     db.all(`
-//                         SELECT u.id AS userId, u.socketId, COUNT(u2.id) AS disconnectedCount
-//                         FROM users u
-//                         JOIN groupInvite gi ON gi.groupId IN (${placeholders})
-//                         LEFT JOIN users u2 ON u2.socketId IS NULL AND gi.invited = u2.id
-//                         WHERE gi.groupId IN (${placeholders}) AND u.socketId IS NOT NULL
-//                         GROUP BY u.id
-//                     `, [...groupIds, ...groupIds], (err, connectedUsers) => {
-//                         if (err) {
-//                             console.error('Error fetching connected users from groups:', err);
-//                             return;
-//                         }
-
-//                         // Check if there is exactly one disconnected user in those groups
-//                         const totalDisconnected = connectedUsers.reduce((count, user) => count + (user.disconnectedCount > 0 ? 1 : 0), 0);
-
-//                         if (totalDisconnected === 1) {
-//                             // Send groups to each connected user
-//                             connectedUsers.forEach(user => {
-//                                 io.to(user.socketId).emit('disconnectedUserGroups', groups);
-//                             });
-//                         }
-//                     });
-//                 });
-
-//                 // Fetch the friends of the disconnected user
-//                 fetchFriends(disconnectedUserId, (friends) => {
-//                     // Notify each friend about their updated friend list
-//                     friends.forEach(friend => {
-//                         if (friend.socketId) {
-//                             // Fetch the updated list of the friend's friends
-//                             fetchFriends(friend.id, (updatedFriendsList) => {
-//                                 // Send the updated friend list to the friend
-//                                 io.to(friend.socketId).emit('friendsList', updatedFriendsList);
-//                             });
-//                         }
-//                     });
-//                 });
-//             }
-//         });
-//     });
-// });
+// Handling 'disconnect' event
 socket.on('disconnect', () => {
-    // Find the user that disconnected based on their socketId
+    // First, find the user that disconnected based on the socketId
     db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, disconnectedUser) => {
         if (err || !disconnectedUser) {
             console.error('Disconnected user not found:', err);
@@ -2186,69 +2162,68 @@ socket.on('disconnect', () => {
         db.run('UPDATE users SET socketId = NULL, receiver = NULL, groupRec = NULL WHERE id = ?', [disconnectedUserId], (err) => {
             if (err) {
                 console.error('Error clearing socketId and receiver:', err);
-                return;
-            }
+            } else {
+                console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
 
-            console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
-
-            // Fetch groups the disconnected user belongs to
-            db.all(`
-                SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
-                FROM groupInvite gi
-                JOIN groups g ON gi.groupId = g.id
-                WHERE gi.invited = ? AND gi.accepted = 1
-            `, [disconnectedUserId], (err, groups) => {
-                if (err) {
-                    console.error('Error fetching groups for disconnected user:', err);
-                    return;
-                }
-            
-                // Only process if the user is part of groups
-                const groupIds = groups.map(group => group.groupId);
-                if (groupIds.length === 0) return;
-            
-                // Placeholders for group IDs
-                const placeholders = groupIds.map(() => '?').join(',');
-            
-                // Fetch group members with status check
+                // Fetch groups of the disconnected user
                 db.all(`
-                    SELECT DISTINCT u.id AS userId, u.socketId
-                    FROM users u
-                    JOIN groupInvite gi ON u.id = gi.invited
-                    WHERE gi.groupId IN (${placeholders}) AND gi.accepted = 1
-                `, [...groupIds], (err, groupMembers) => {
+                    SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
+                    FROM groupInvite gi
+                    JOIN groups g ON gi.groupId = g.id
+                    WHERE gi.invited = ? AND gi.accepted = 1
+                `, [disconnectedUserId], (err, groups) => {
                     if (err) {
-                        console.error('Error fetching group members:', err);
+                        console.error('Error fetching groups for disconnected user:', err);
                         return;
                     }
-                
-                    console.log('Group Members:', groupMembers);
-                
-                    const connectedMembers = groupMembers.filter(user => user.socketId);
-                    if (connectedMembers.length === 1) {
-                        connectedMembers.forEach(member => {
-                            io.to(member.socketId).emit('disconnectedUserGroups', groups);
-                        });
-                    }
+
+                    // Find all users in those groups
+                    const groupIds = groups.map(group => group.groupId);
+                    if (groupIds.length === 0) return; // No groups to process
+
+                    const placeholders = groupIds.map(() => '?').join(',');
+                    db.all(`
+                        SELECT u.id AS userId, u.socketId, COUNT(u2.id) AS disconnectedCount
+                        FROM users u
+                        JOIN groupInvite gi ON gi.groupId IN (${placeholders})
+                        LEFT JOIN users u2 ON u2.socketId IS NULL AND gi.invited = u2.id
+                        WHERE gi.groupId IN (${placeholders}) AND u.socketId IS NOT NULL
+                        GROUP BY u.id
+                    `, [...groupIds, ...groupIds], (err, connectedUsers) => {
+                        if (err) {
+                            console.error('Error fetching connected users from groups:', err);
+                            return;
+                        }
+
+                        // Check if there is exactly one disconnected user in those groups
+                        const totalDisconnected = connectedUsers.reduce((count, user) => count + (user.disconnectedCount > 0 ? 1 : 0), 0);
+
+                        if (totalDisconnected === 1) {
+                            // Send groups to each connected user
+                            connectedUsers.forEach(user => {
+                                io.to(user.socketId).emit('disconnectedUserGroups', groups);
+                            });
+                        }
+                    });
                 });
-                
-            });
-            
-            // Fetch the friends of the disconnected user
-            fetchFriends(disconnectedUserId, (friends) => {
-                friends.forEach(friend => {
-                    if (friend.socketId) {
-                        // Fetch updated friend list for the friend
-                        fetchFriends(friend.id, (updatedFriendsList) => {
-                            io.to(friend.socketId).emit('friendsList', updatedFriendsList);
-                        });
-                    }
+
+                // Fetch the friends of the disconnected user
+                fetchFriends(disconnectedUserId, (friends) => {
+                    // Notify each friend about their updated friend list
+                    friends.forEach(friend => {
+                        if (friend.socketId) {
+                            // Fetch the updated list of the friend's friends
+                            fetchFriends(friend.id, (updatedFriendsList) => {
+                                // Send the updated friend list to the friend
+                                io.to(friend.socketId).emit('friendsList', updatedFriendsList);
+                            });
+                        }
+                    });
                 });
-            });
+            }
         });
     });
 });
-
 
 
 // Helper function to fetch friends with username, profile image, and online status

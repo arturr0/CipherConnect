@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const app = express();
 const server = http.createServer(app);
-// const io = socketIo(server);
+const io = socketIo(server);
 const JWT_SECRET = process.env.JWT_SECRET;
 const uploadsDir = path.join(__dirname, 'uploads'); // Adjust the path according to your project structure
 
@@ -42,19 +42,7 @@ app.set('view engine', 'pug');
 
 
 // Handle file upload route
-const io = require('socket.io')(server, { 
-    maxHttpBufferSize: 2 * 1024 * 1024,
-    debug: true  // Enable verbose logging
-});
-app.use('/uploads', express.static(uploadsDir)); // Serve images from the uploads directory
-//app.use('/uploads', express.static('uploads'));
-app.use(require('express-fileupload')({
-    limits: { fileSize: 2 * 1024 * 1024 } // 1 MB
-}));
-// Create uploads directory if it doesn't exist
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadsDir); // Set the destination to 'uploads' directory
@@ -1090,7 +1078,7 @@ socket.on('requestGroupMessages', (groupId) => {
                             console.log(`User joined group room: ${group.groupId}`);
                             
                             // Broadcast to all group members about the user joining
-                            socket.broadcast.to(`${group.groupId}`).emit('userJoinedGroup', {
+                            io.to(`${group.groupId}`).emit('userJoinedGroup', {
                                 userId: updatedUser.id,
                                 username: updatedUser.username,
                                 groupId: group.groupId,
@@ -1412,7 +1400,7 @@ socket.on('requestGroupMessages', (groupId) => {
                 }
     
                 // Step 4: Notify all remaining online users if there is at least one online
-                if (rows && rows.length == 1) {
+                if (rows && rows.length > 0) {
                     rows.forEach(row => {
                         io.to(row.socketId).emit('user quit group', { groupId });
                     });
@@ -2095,85 +2083,9 @@ const sendUpdatedFriendsList = (userId) => {
 
 
 
-// Group svg not works
-// socket.on('disconnect', () => {
-//     // First, find the user that disconnected based on the socketId
-//     db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, disconnectedUser) => {
-//         if (err || !disconnectedUser) {
-//             console.error('Disconnected user not found:', err);
-//             return;
-//         }
-
-//         const disconnectedUserId = disconnectedUser.id;
-
-//         // Clear the socketId and receiver fields
-//         db.run('UPDATE users SET socketId = NULL, receiver = NULL, groupRec = NULL WHERE id = ?', [disconnectedUserId], (err) => {
-//             if (err) {
-//                 console.error('Error clearing socketId and receiver:', err);
-//             } else {
-//                 console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
-
-//                 // Fetch groups of the disconnected user
-//                 db.all(`
-//                     SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
-//                     FROM groupInvite gi
-//                     JOIN groups g ON gi.groupId = g.id
-//                     WHERE gi.invited = ? AND gi.accepted = 1
-//                 `, [disconnectedUserId], (err, groups) => {
-//                     if (err) {
-//                         console.error('Error fetching groups for disconnected user:', err);
-//                         return;
-//                     }
-
-//                     // Find all users in those groups
-//                     const groupIds = groups.map(group => group.groupId);
-//                     if (groupIds.length === 0) return; // No groups to process
-
-//                     const placeholders = groupIds.map(() => '?').join(',');
-//                     db.all(`
-//                         SELECT u.id AS userId, u.socketId, COUNT(u2.id) AS disconnectedCount
-//                         FROM users u
-//                         JOIN groupInvite gi ON gi.groupId IN (${placeholders})
-//                         LEFT JOIN users u2 ON u2.socketId IS NULL AND gi.invited = u2.id
-//                         WHERE gi.groupId IN (${placeholders}) AND u.socketId IS NOT NULL
-//                         GROUP BY u.id
-//                     `, [...groupIds, ...groupIds], (err, connectedUsers) => {
-//                         if (err) {
-//                             console.error('Error fetching connected users from groups:', err);
-//                             return;
-//                         }
-
-//                         // Check if there is exactly one disconnected user in those groups
-//                         const totalDisconnected = connectedUsers.reduce((count, user) => count + (user.disconnectedCount > 0 ? 1 : 0), 0);
-
-//                         if (totalDisconnected === 1) {
-//                             // Send groups to each connected user
-//                             connectedUsers.forEach(user => {
-//                                 io.to(user.socketId).emit('disconnectedUserGroups', groups);
-//                             });
-//                         }
-//                     });
-//                 });
-
-//                 // Fetch the friends of the disconnected user
-//                 fetchFriends(disconnectedUserId, (friends) => {
-//                     // Notify each friend about their updated friend list
-//                     friends.forEach(friend => {
-//                         if (friend.socketId) {
-//                             // Fetch the updated list of the friend's friends
-//                             fetchFriends(friend.id, (updatedFriendsList) => {
-//                                 // Send the updated friend list to the friend
-//                                 io.to(friend.socketId).emit('friendsList', updatedFriendsList);
-//                             });
-//                         }
-//                     });
-//                 });
-//             }
-//         });
-//     });
-// });
+// Handling 'disconnect' event
 socket.on('disconnect', () => {
-    // Find the user that disconnected based on their socketId
+    // First, find the user that disconnected based on the socketId
     db.get('SELECT id FROM users WHERE socketId = ?', [socket.id], (err, disconnectedUser) => {
         if (err || !disconnectedUser) {
             console.error('Disconnected user not found:', err);
@@ -2186,69 +2098,68 @@ socket.on('disconnect', () => {
         db.run('UPDATE users SET socketId = NULL, receiver = NULL, groupRec = NULL WHERE id = ?', [disconnectedUserId], (err) => {
             if (err) {
                 console.error('Error clearing socketId and receiver:', err);
-                return;
-            }
+            } else {
+                console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
 
-            console.log(`SocketId and receiver cleared for userId: ${disconnectedUserId}`);
-
-            // Fetch groups the disconnected user belongs to
-            db.all(`
-                SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
-                FROM groupInvite gi
-                JOIN groups g ON gi.groupId = g.id
-                WHERE gi.invited = ? AND gi.accepted = 1
-            `, [disconnectedUserId], (err, groups) => {
-                if (err) {
-                    console.error('Error fetching groups for disconnected user:', err);
-                    return;
-                }
-            
-                // Only process if the user is part of groups
-                const groupIds = groups.map(group => group.groupId);
-                if (groupIds.length === 0) return;
-            
-                // Placeholders for group IDs
-                const placeholders = groupIds.map(() => '?').join(',');
-            
-                // Fetch group members with status check
+                // Fetch groups of the disconnected user
                 db.all(`
-                    SELECT DISTINCT u.id AS userId, u.socketId
-                    FROM users u
-                    JOIN groupInvite gi ON u.id = gi.invited
-                    WHERE gi.groupId IN (${placeholders}) AND gi.accepted = 1
-                `, [...groupIds], (err, groupMembers) => {
+                    SELECT g.id AS groupId, g.name AS groupName, g.avatar AS groupAvatar
+                    FROM groupInvite gi
+                    JOIN groups g ON gi.groupId = g.id
+                    WHERE gi.invited = ? AND gi.accepted = 1
+                `, [disconnectedUserId], (err, groups) => {
                     if (err) {
-                        console.error('Error fetching group members:', err);
+                        console.error('Error fetching groups for disconnected user:', err);
                         return;
                     }
-                
-                    console.log('Group Members:', groupMembers);
-                
-                    const connectedMembers = groupMembers.filter(user => user.socketId);
-                    if (connectedMembers.length === 1) {
-                        connectedMembers.forEach(member => {
-                            io.to(member.socketId).emit('disconnectedUserGroups', groups);
-                        });
-                    }
+
+                    // Find all users in those groups
+                    const groupIds = groups.map(group => group.groupId);
+                    if (groupIds.length === 0) return; // No groups to process
+
+                    const placeholders = groupIds.map(() => '?').join(',');
+                    db.all(`
+                        SELECT u.id AS userId, u.socketId, COUNT(u2.id) AS disconnectedCount
+                        FROM users u
+                        JOIN groupInvite gi ON gi.groupId IN (${placeholders})
+                        LEFT JOIN users u2 ON u2.socketId IS NULL AND gi.invited = u2.id
+                        WHERE gi.groupId IN (${placeholders}) AND u.socketId IS NOT NULL
+                        GROUP BY u.id
+                    `, [...groupIds, ...groupIds], (err, connectedUsers) => {
+                        if (err) {
+                            console.error('Error fetching connected users from groups:', err);
+                            return;
+                        }
+
+                        // Check if there is exactly one disconnected user in those groups
+                        const totalDisconnected = connectedUsers.reduce((count, user) => count + (user.disconnectedCount > 0 ? 1 : 0), 0);
+
+                        if (totalDisconnected === 1) {
+                            // Send groups to each connected user
+                            connectedUsers.forEach(user => {
+                                io.to(user.socketId).emit('disconnectedUserGroups', groups);
+                            });
+                        }
+                    });
                 });
-                
-            });
-            
-            // Fetch the friends of the disconnected user
-            fetchFriends(disconnectedUserId, (friends) => {
-                friends.forEach(friend => {
-                    if (friend.socketId) {
-                        // Fetch updated friend list for the friend
-                        fetchFriends(friend.id, (updatedFriendsList) => {
-                            io.to(friend.socketId).emit('friendsList', updatedFriendsList);
-                        });
-                    }
+
+                // Fetch the friends of the disconnected user
+                fetchFriends(disconnectedUserId, (friends) => {
+                    // Notify each friend about their updated friend list
+                    friends.forEach(friend => {
+                        if (friend.socketId) {
+                            // Fetch the updated list of the friend's friends
+                            fetchFriends(friend.id, (updatedFriendsList) => {
+                                // Send the updated friend list to the friend
+                                io.to(friend.socketId).emit('friendsList', updatedFriendsList);
+                            });
+                        }
+                    });
                 });
-            });
+            }
         });
     });
 });
-
 
 
 // Helper function to fetch friends with username, profile image, and online status
