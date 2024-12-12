@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scroll Dropdown Animation</title>
+    <style>
+        * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f3f3f3;
+}
+
+.menu-container {
+    position: relative;
+}
+
+.menu {
+    display: flex;
+    background-color: #333;
+    padding: 10px 20px;
+    border-radius: 5px;
+}
+
+.menu-item {
+    color: #fff;
+    padding: 10px 15px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.menu-item:hover {
+    color: #ffd700;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #444;
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+    border-radius: 5px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.4s ease;
+}
+
+.dropdown:hover .dropdown-content {
+    max-height: 200px; /* Adjust this height based on content */
+    opacity: 1;
+    animation: scrollDown 0.4s ease forwards;
+}
+
+.dropdown:not(:hover) .dropdown-content {
+    animation: scrollUp 0.4s ease forwards;
+}
+
+.dropdown-content a {
+    color: #fff;
+    padding: 10px 15px;
+    text-decoration: none;
+    background-color: #444;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content a:hover {
+    background-color: #555;
+}
+
+/* Scroll animations */
+@keyframes scrollDown {
+    from {
+        transform: translateY(-20px);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+@keyframes scrollUp {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-20px);
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <div class="menu">
+            <a href="#" class="menu-item">Home</a>
+            <div class="dropdown">
+                <a href="#" class="menu-item">Services</a>
+                <div class="dropdown-content">
+                    <a href="#">Service 1</a>
+                    <a href="#">Service 2</a>
+                    <a href="#">Service 3</a>
+                </div>
+            </div>
+            <a href="#" class="menu-item">About</a>
+            <a href="#" class="menu-item">Contact</a>
+        </div>
+    </div>
+</body>
+</html>
