@@ -3,87 +3,30 @@ html
     head
         title CipherConnect
         link(rel='stylesheet', href='/css/index.css')
-        link(rel='shortcut icon', href='http://localhost:3000/chat2.ico')
-        script(src='http://localhost:35729/livereload.js')
-        script.
-            document.addEventListener('DOMContentLoaded', () => {
-                const loginButton = document.getElementById('login-button');
-                loginButton.addEventListener('click', async () => {
-                    const usernameInput = document.getElementById('username');
-                    const passwordInput = document.getElementById('password');
-                    
-                    const username = usernameInput.value.trim();
-                    const password = passwordInput.value.trim();
-
-                    // Check for empty inputs
-                    if (!username || !password) {
-                        alert('Please enter both username and password.');
-                        return; // Exit the function if inputs are empty
-                    }
-
-                    try {
-                        const response = await fetch('/login', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username, password })
-                        });
-
-                        if (response.ok) {
-                            localStorage.setItem('username', username);
-                            window.location.href = '/chat';
-                        } else {
-                            const errorData = await response.json();
-                            alert(errorData.message || 'Login failed');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
-                    }
-                });
-
-                const signUpButton = document.getElementById('sign-up-button');
-                signUpButton.addEventListener('click', async () => {
-                    const usernameInput = document.getElementById('username');
-                    const passwordInput = document.getElementById('password');
-                    
-                    const username = usernameInput.value.trim();
-                    const password = passwordInput.value.trim();
-
-                    // Check for empty inputs
-                    if (!username || !password) {
-                        alert('Please enter both username and password.');
-                        return; // Exit the function if inputs are empty
-                    }
-
-                    try {
-                        const response = await fetch('/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username, password })
-                        });
-
-                        if (response.ok) {
-                            alert('Registration successful! You can now log in.');
-                        } else {
-                            const errorData = await response.json();
-                            alert(errorData.message || 'Registration failed');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
-                    }
-                });
-            });
-
+        link(rel='stylesheet' href='/css/fontello.css')
     body
         .form-container
-            h2 fffffffffff
+            h2 CipherConnect
             form#auth-form
-                label(for='username') Username:
-                input(type='text' id='username' name='username' required)
-                br
-                label(for='password') s
-                input(type='password' id='password' name='password' required)
-                br
-                button(type='button' id='login-button') Log In
-                button(type='button' id='sign-up-button') Sign Up
+                //- label(for='username') Username:
+                #info
+                    | INFO
+                input#username(type='text' name='username' autocomplete="new-password" required placeholder='LOGIN')
+                #loginInfo
+                    #loginInfoText.characters
+                        | 1-20 characters
+                    .icons
+                        i.icon-cancel-circled2#iconLoginRejected
+                        i.icon-ok-circled2#iconLoginAccepted
+                //- label(for='password') Password:
+                input#password(type='password' name='password' autocomplete="off" required placeholder='PASSWORD')
+                #passwordInfo
+                    #passwordInfoText.characters
+                        | 4-8 characters
+                    .icons
+                        i.icon-cancel-circled2#iconPasswordRejected
+                        i.icon-ok-circled2#iconPasswordAccepted
+                #buttons
+                    button.buttons(type='button' id='login-button' style="margin-right: 5px;" disabled) Log In
+                    button.buttons(type='button' id='sign-up-button' disabled) Sign Up
+        script(src='/index.js' type='text/javascript')
