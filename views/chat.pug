@@ -32,7 +32,7 @@ html(lang='en')
                 div#menuDiv
                     div#messagesNotRead.dropdown-container
                         #invitesDropdown.dropdownToggle
-                            div#messCounter(value="0").counter 0+
+                            div#messCounter(value="0").counter 0
                             i.icon-mail.menuIcon
                         #messagesContent.dropdown-content.dropdown(style="color: black;")
                             div a
@@ -58,29 +58,31 @@ html(lang='en')
                             i.icon-keyboard.hidden
                         div#message-container
                     div#inputAndIcons
-                        textarea#message(autoresize='' style='margin-bottom: 10px; width: 40vw; min-height: 80px; max-height: 50vh; margin-top: 10px; font-size: 16px;')
-                        #chatIcons
-                #account
-                    #avatarOrInitials
-                        #initials(style="visibility: hidden;")
-                    #accountContent
-                        div#crypto.accountContentText
-                            | No Storing Messages
-                            .icon-user-secret.accIon
-                        .accountContentText
-                            label(for="userAvatar" class="custom-file-label" style="color: inherit; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%;")
-                                span Upload Avatar
-                                .icon-upload-1.accIon
-                            input(type="file" id="userAvatar" accept="image/*" style="display: none")
-                        #logOut.accountContentText
-                            | Log Out
-                            .icon-off.accIon
-                        #deleteAccount.accountContentText
-                            | Delete Account
-                            .icon-user-times.accIon
-                        div#findUsers.accountContentText
-                            | Find Users
-                            .icon-search-4.accIon
+                        #chatInput
+                            textarea#message(autoresize='' style='margin: auto; width: 40vw; min-height: 80px; max-height: 50vh; font-size: 16px;')
+                            //- #chatIcons
+                #accountContainer
+                    #account
+                        #avatarOrInitials
+                            #initials(style="visibility: hidden;")
+                        #accountContent
+                            div#crypto.accountContentText
+                                | No Storing Messages
+                                .icon-user-secret.accIon
+                            .accountContentText
+                                label(for="userAvatar" class="custom-file-label" style="color: inherit; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%;")
+                                    span Upload Avatar
+                                    .icon-upload-1.accIon
+                                input(type="file" id="userAvatar" accept="image/*" style="display: none")
+                            #logOut.accountContentText
+                                | Log Out
+                                .icon-off.accIon
+                            #deleteAccount.accountContentText
+                                | Delete Account
+                                .icon-user-times.accIon
+                            div#findUsers.accountContentText
+                                | Find Users
+                                .icon-search-4.accIon
             .modal#confirmModal
                 .modal-content
                     p#confirmText

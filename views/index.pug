@@ -2,30 +2,39 @@ doctype html
 html
     head
         title CipherConnect
+        link(rel="shortcut icon" href="http://localhost:3000/chat2.ico")
         link(rel='stylesheet', href='/css/index.css')
         link(rel='stylesheet' href='/css/fontello.css')
     body
         .form-container
-            h2 CipherConnect
+            h2.pulsate.neonText CipherConnect
             form#auth-form
                 //- label(for='username') Username:
                 #info
-                    | INFO
-                input#username(type='text' name='username' autocomplete="new-password" required placeholder='LOGIN')
-                #loginInfo
-                    #loginInfoText.characters
-                        | 1-20 characters
+                    | Enter username and password to log in or sign up
+                .input(style="margin-bottom: 0;")
+                    input#username(type='text' name='username' autocomplete="new-password" required spellcheck="false")
+                    label USERNAME
                     .icons
                         i.icon-cancel-circled2#iconLoginRejected
-                        i.icon-ok-circled2#iconLoginAccepted
+                        i.icon-ok-circled2#iconLoginAccepted 
+                //- #loginInfo
+                //-     #loginInfoText.characters(style="margin-bottom: 1rem;")
+                        //- p.chars
+                        //-     | *
+                        //- | 1-20 characters    
                 //- label(for='password') Password:
-                input#password(type='password' name='password' autocomplete="off" required placeholder='PASSWORD')
-                #passwordInfo
-                    #passwordInfoText.characters
-                        | 4-8 characters
+                .input(style="margin-bottom: 0;")
+                    input#password(type='password' name='password' autocomplete="off" required spellcheck="false")
+                    label PASSWORD
                     .icons
                         i.icon-cancel-circled2#iconPasswordRejected
                         i.icon-ok-circled2#iconPasswordAccepted
+                #passwordInfo
+                    #passwordInfoText.characters
+                        //- p.chars
+                        //-     | *
+                        //- | 4-8 characters
                 #buttons
                     button.buttons(type='button' id='login-button' style="margin-right: 5px;" disabled) Log In
                     button.buttons(type='button' id='sign-up-button' disabled) Sign Up

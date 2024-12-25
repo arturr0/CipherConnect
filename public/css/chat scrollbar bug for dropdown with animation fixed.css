@@ -8,9 +8,6 @@ body {
   color: white;
   font-family: 'Roboto', sans-serif;
 }
-* {
-  box-sizing: border-box;
-}
 label {
   display: flex;
 }
@@ -72,7 +69,6 @@ button:hover {
     justify-content: center; /* Center horizontally */
     /* margin: 10px 0;  */
     margin-top: 10px;
-    position: relative;
 }
 
 .profile-container {
@@ -85,7 +81,7 @@ button:hover {
     margin-left: 10px;
 }
 .loading-placeholder, .initials, .profile-image {
-    position: relative; /* Allow overlap without layout shift */
+    position: absolute; /* Allow overlap without layout shift */
     top: 0; /* Align to the top */
     left: 0; /* Align to the left */
     width: 40px; /* Consistent width */
@@ -168,10 +164,9 @@ h1 a {
 #menu {
   width: 100vw;
   height: 10vh;
-  /* background: #000a00; */
+  background: transparent;
   display: flex;
-  /* background: linear-gradient(0deg, rgba(4, 13, 37, 1) 12%, rgba(23, 104, 112, 1) 85%); */
-  background: #0d1117;
+  background: linear-gradient(0deg, rgba(4, 13, 37, 1) 12%, rgba(23, 104, 112, 1) 85%);
 }
 .menuIcon {
   font-size: 40px;;
@@ -218,51 +213,36 @@ h1 a {
   width: 10vw;
 }
 /* Dropdown content styling */
-.dropdown-container .dropdown-content {
+.dropdown-content {
   position: absolute;
   width: 10vw;
   max-height: 0;
   overflow: hidden;
-  /* visibility: hidden; */
-  /* opacity: 0; */
-  /* transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s; */
-  z-index: 20;
-  transition: max-height 0.7s ease;
+  visibility: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0s 0.3s;
+  z-index: 1;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background: #0483c9;
 }
 
-/* Show dropdown on hover with smooth scroll down transition */
+/* Show dropdown on hover with smooth transition and delayed overflow */
 .dropdown-container:hover .dropdown-content {
   max-height: 200px;
   visibility: visible;
   opacity: 1;
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
   z-index: 20;
-  animation: setOverflow 0s ease 0.3s forwards;
+  animation: setOverflow 0s ease 0.3s forwards; /* Delay overflow change */
 }
 
-/* Animation to set overflow to auto after expand */
+/* Keyframes to change overflow after the transition */
 @keyframes setOverflow {
   to {
     overflow: auto;
   }
 }
 
-/* Smooth scroll up when not hovered */
-.dropdown-container .dropdown-content {
-  animation: hideOverflow 0s ease 0.3s forwards;
-}
-
-/* Keyframes to hide overflow after collapsing */
-@keyframes hideOverflow {
-  0% {
-    overflow: auto;
-  }
-  100% {
-    overflow: hidden;
-  }
-}
 
 .no-hover .dropdown-content {
   max-height: 0; /* Prevent max-height */
@@ -294,7 +274,7 @@ h1 a {
   left: 0;
   height: 2px;
   width: 0%; /* Initially no line */
-  background-color: #1cd679; /* Line color */
+  background-color: #3f5efb; /* Line color */
   transition: width 0.4s ease; /* Animate width only */
 }
 
@@ -404,18 +384,12 @@ h1 a {
     4px 0px 6px 0px rgba(63, 94, 251, 0.5) inset;  */
   margin-left: auto;
   z-index: 10;
-  /* border-top: solid 1px #1cd679;
-  border-left: solid 1px #1cd679; */
-  border-top: solid 1px #2d343c;
-  border-left: solid 1px #2d343c;
-  background: #000a00;
-
 
 }
 #message-container {
   overflow: auto;
 }
-#accountContainer {
+#account {
   width: 25vw;
   height: 90vh;
   /* background: #ccc; */
@@ -423,23 +397,8 @@ h1 a {
   /* justify-content: center; */
   align-items: center;
   flex-direction: column;
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%); */
-  background: #000a00;
-  border-top: solid 1px #2d343c;
-
-}
-#account {
-  /* gap: 10px; */
-  border: solid 1px #2d343c;
-  border-radius: 5px;
-  margin: auto;
-  padding: 10px;
-  background: #151b23;
-  width: calc(100% - 10px);
-  height: calc(100% - 20px);
-  margin: 10px 10px 10px 0;
-
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 #avatarOrInitials {
   margin-top: 50px;
@@ -528,15 +487,8 @@ h1 a {
   min-height: 0; /* Prevents overflow issues */
   padding: 0; /* Optional padding around chat */
   overflow: hidden;
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%); */
-  /* background: #000a00; */
-  background: #151b23;;
-  margin: 10px;
-  border: solid 1px #2d343c;
-  border-radius: 5px;
-
-
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 40%, rgba(14,51,85,1) 85%);
 }
 #receiver {
   margin-bottom: auto;
@@ -758,21 +710,10 @@ h1 a {
   justify-content: center;
   /* border-top: solid 1px #3f5efb;
   box-shadow: 0px -4px 6px 0px rgba(63, 94, 251, 0.5); Adjusted shadow */
-  /* background: rgb(4,13,37); */
-  background: #000a00;
+  background: rgb(4,13,37);
   
 }
-#chatInput {
-  width: calc(100% - 10px);
-  height: calc(100% - 10px);
-  margin: 0 10px 10px 10px;
-  background: #151b23;
-  border: solid 1px #2d343c;
-  border-radius: 5px;
-  display: flex;
-  place-content: center;
-  padding: 5px;
-}
+
 @keyframes blinker {
   50% {
     opacity: 0;
@@ -908,24 +849,20 @@ h1 a {
   /* z-index: -10; */
   display: flex;
   flex-direction: column;
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%); */
-  background: #0d1117;
-  /* border-top: solid 1px #1cd679; */
-
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 #friendsSearchBg {
   position: absolute;
-  width: 100%; /* Take up 25% of the viewport width */
+  width: 25vw; /* Take up 25% of the viewport width */
   left: 0; /* Start fully visible */
   top: 10vh;
   height: 90vh;
   
   z-index: -11;
   
-  /* background: rgb(4,13,37);
-  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%); */
-  background: #0d1117;
+  background: rgb(4,13,37);
+  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 /* #friendsContainer {
   height: 96%;
@@ -967,8 +904,7 @@ h1 a {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  /* background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%); */
-  background: #0d1117;
+  background: linear-gradient(0deg, rgba(4,13,37,1) 12%, rgba(16,82,144,1) 85%);
 }
 
 #searchUsers.move-left {
@@ -1016,14 +952,10 @@ h1 a {
 .modal {
   max-height: 90vh;
   min-width: 40vw;
-  border-radius: 5px;
 }
 .modal-content {
-  /* background: rgb(63,94,251);
-  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%); */
-  background: #0d1117;
-  border: solid 1px #2d343c;
-  border-radius: 5px;
+  background: rgb(63,94,251);
+  background: radial-gradient(circle, rgba(63,94,251,1) 0%, rgba(59,193,247,1) 100%);
   padding: 20px;
   /* max-width: 100%; */
   /* height: auto; Ensure content can grow */
@@ -1069,7 +1001,7 @@ input[type="radio"]:checked::before, input[type="checkbox"]:checked::before {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%); /* Center the checkmark */
-  color: white !important;
+  color: rgb(1, 36, 1) !important;
 }
 
 
@@ -1086,16 +1018,4 @@ input[type="checkbox"]:checked + label::after {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-}
-.svg-circle {
-  width: 16px;      /* Controls the width of the SVG */
-  height: 16px;     /* Controls the height of the SVG */
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  transform: translate(20%, 20%);
-  z-index: 10;
-}
-#receiverAvatar, .profile-image {
-  object-fit: cover;
 }
