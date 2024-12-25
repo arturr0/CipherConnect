@@ -1,4 +1,4 @@
-const socket = io.connect('http://localhost:3000');
+const socket = io.connect('https://cipherconnect-1.onrender.com');
 const baseUrl = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
